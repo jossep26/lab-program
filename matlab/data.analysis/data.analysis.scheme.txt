@@ -1,0 +1,20 @@
+data analysis scheme
+for 2-p imaging, GCaMP
+
+Zhou Bangyu
+Dec/4/2009
+
+First, load all the files. This include the timing mat file with array 'data', and 'protocol', as well as the registered imaging tif file. There should be a commonality in their filenames, such as 'a01-01-cal-lr-001'. No output needs saving.
+
+Second, process the image with ROI and corresponding BOT. Appoint ROI(s) and perform BOT on it(them). Each BOT results in a vector of absolute brightness value (averaged across the ROI), 12bit each pixel, and 1 frame, 1 value. ROI should be saved, BOT keep for further analysis.
+
+Third, find the timing. Find the absolute time for each frame in the image, and each ES event, output these vector.
+
+Fourth, prepare plotting data. Set the time of each frame the absolute brightness value. 
+
+Finally, plot. Plot the BOT trace for each ROI, time as horizontal axis, brightness value as vertical axis, and ES plot as overlaying vertical line at the time when it happens. There should be units about the axis, especially time axis.
+
+Thing to be saved to file:
+The ROI infomation, regions, mask matrice.
+Critical timings, e.g. ES start time, frame falling on ES.
+Plotted images.
