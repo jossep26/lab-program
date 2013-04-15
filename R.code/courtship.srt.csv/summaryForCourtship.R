@@ -2,7 +2,7 @@ createCourtshipDf <- function(nRows)
 {# tool function
 
     # createCourtshipDf will create an empty data frame for holding courtship summary
-    df <- data.frame(filename = rep("", nRows), category = rep("", nRows), total_time = rep("", nRows), time_percent = rep(NA, nRows), occurence = rep(NA, nRows), stringsAsFactors=FALSE)
+    df <- data.frame(filename = rep("", nRows), category = rep("", nRows), total_time = rep("", nRows), time_percent = rep(NA, nRows), time = rep(NA, nRows), occurence = rep(NA, nRows), stringsAsFactors=FALSE)
     
     return(df)
 }
@@ -16,50 +16,10 @@ barename <- function(fn)
 
 }
 
-sumDfCourtshipByTL <- function(TL, textCatg, dfCourtship)
-{
-    #  sumDfCourtshipByTL will return summary about the given behavior category and occurence of _A_ given 'category' for _A_ given time length in a courtship data frame
-    #  IMPORTANT: assumes start time(i.e. offset) = 0
-    #  IMPORTANT: if event's end time > TL, the end time is set to TL
+readCourtshipFile <- function(file)
+{# tool function
 
-    # if category does not exist, all the summary should be NA
-    ckCatg <- dfCourtship$text==textCatg
-    if (sum(ckCatg, na.rm=TRUE)==0) 
-    {
-        sumDf <- data.frame(category = textCatg, total_time = TL, time_percent = NA, occurence = NA, stringsAsFactors=FALSE)
-    }
-    else
-    {
-    # if category do exist, calculate interval for the time length provided
-    
-        # select relevant columns, for the given category and time length
-        courtshipTextCatg <- dfCourtship[(dfCourtship$text==textCatg)&(dfCourtship$start_miliSec<TL), c('start_miliSec', 'end_miliSec')]
-        
-        # truncate if any 'end' time exceeds the given time length
-        if (sum(courtshipTextCatg$end_miliSec>TL, na.rm=TRUE)!=0)
-        {
-            courtshipTextCatg[courtshipTextCatg$end_miliSec>TL, 'end_miliSec'] <- TL
-        }
-        
-        # re-calculate all the intervals
-        courtshipTextCatg[, 'interval_miliSec'] <- courtshipTextCatg[, 'end_miliSec'] - courtshipTextCatg[, 'start_miliSec']
-    
-        # calculate the fraction of time of this category, in this time length
-        textCatgTime <- sum(courtshipTextCatg[, 'interval_miliSec'])/TL
-        # calculate the occurence of this behavior category (namely the number of rows)
-        textCatgOccurence <- length(courtshipTextCatg[, 'interval_miliSec'])
-      
-        # re-structure and return the summary
-        sumDf <- data.frame(category = textCatg, total_time = TL, time_percent = textCatgTime, occurence = textCatgOccurence, stringsAsFactors=FALSE)
-    }
-
-    return(sumDf)
-}
-
-sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation', 'courtship'), failOnStartTime=TRUE)
-{
-    # sumCourtshipSrt will analyze a .srt file for a summary of each provided category by each provided time length 
-    # IMPORTANT: expects one and only one 'latency' event indicating true start(not video start)
+    # readCourtshipFile returns a data frame from .srt or .csv file that contains courtship analysis data
 
     basefnInput <- basename(file)
 
@@ -67,48 +27,107 @@ sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 24
     {
         if(!exists("read.srt", mode="function"))
         {
-            warning("Requires 'csv_from_srt.R'. Do source('full\\path\\to\\csv_from_srt.R')")
+            print("Requires 'csv_from_srt.R'. Do source('full\\path\\to\\csv_from_srt.R')")
+            return(NULL)
         }
 
-        b<-read.srt(file=file)
+        data<-read.srt(file=file)
     }
     else if(grepl("[.]csv$", basefnInput))
     {
-        b<-read.csv(file=file, header=T)
+        data<-read.csv(file=file, header=T)
     }
     else
     {
-        print(".srt or .csv file only")
+        print("Please provide .srt or .csv file only")
         return(NULL)
     }
     
-    nTL <- length(listTL)
-    nCatg <- length(listCatg)  
+    return(data)
+}
+
+sumDfCourtshipByTL <- function(TL, textCatg, dfCourtship)
+{# tool function
+
+    #  sumDfCourtshipByTL will return summary about the given behavior category and occurence of _A_ given 'category' for _A_ given time length in a courtship data frame
+    #  IMPORTANT: assumes start time(i.e. offset) = 0
+    #  IMPORTANT: if event's end time > TL, the end time is set to TL
+
+    # prepare output data frame
+    sumDf <- data.frame(category = textCatg, total_time = TL, time_percent = NA, time = NA, occurence = NA, stringsAsFactors=FALSE)
+
+    # if category does not exist, all the summary should be NA
+    ckCatg <- dfCourtship$text==textCatg
+    if (sum(ckCatg, na.rm=TRUE)==0) 
+        return(sumDf)
+
+    # select relevant columns, for the given category and time length
+    courtshipTextCatg <- dfCourtship[(dfCourtship$text==textCatg)&(dfCourtship$start_miliSec<TL), c('start_miliSec', 'end_miliSec')]
+    
+    # truncate if any 'end' time exceeds the given time length
+    if (sum(courtshipTextCatg$end_miliSec>TL, na.rm=TRUE)!=0)
+    {
+        courtshipTextCatg[courtshipTextCatg$end_miliSec>TL, 'end_miliSec'] <- TL
+    }
+    
+    # re-calculate all the intervals
+    courtshipTextCatg[, 'interval_miliSec'] <- courtshipTextCatg[, 'end_miliSec'] - courtshipTextCatg[, 'start_miliSec']
+
+    # calculate the fraction of time of this category, in this time length
+    sumDf$time <- sum(courtshipTextCatg[, 'interval_miliSec'])
+    sumDf$time_percent <- sumDf$time / TL
+
+    # calculate the occurence of this behavior category (namely the number of rows)
+    sumDf$occurence <- length(courtshipTextCatg[, 'interval_miliSec'])
+  
+    return(sumDf)
+}
+
+sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation', 'courtship'), failOnStartTime=TRUE)
+{
+    # sumCourtshipSrt will analyze a .srt(.csv) file for a summary of each provided category by each provided time length 
+    # IMPORTANT: expects one and only one 'latency'(or 'start') event indicating true start(not video start, rather experiment start)
+
+    courtshipData <- readCourtshipFile(file)
+    
+    if (is.null(courtshipData))
+        return(NULL)
+ 
     # strip all extensions, e.g. base.ext.ension --> base
     fn <- barename(file)
 
    # get start time
-    if (sum(b$text=='latency') == 1)
+    if (sum(courtshipData$text=='latency') == 1)
     {# exactly one "latency" event indicate true start of the experiment
-        TS <- b[b$text=='latency', 'start_miliSec']
+        TS <- courtshipData[courtshipData$text=='latency', 'start_miliSec']
     } 
+    else if (sum(courtshipData$text=='start') == 1)
+    {# one "start" event also indicate true start of the experiment
+        TS <- courtshipData[courtshipData$text=='start', 'start_miliSec']
+    }
     else 
     {# otherwise assume start time = 0
-        TS <- 0
-
         if(failOnStartTime)
-            stop("Cannot find session start time: one and only one 'latency' event required\n\tUse first event instead by setting failOnStartTime=FALSE")
+        {
+            stop("Cannot find session start time: one and only one 'latency' or 'start' event required\n\tUse 0 instead by setting failOnStartTime=FALSE")
+        }
         else 
-            warning("'latency' event not valid, true start was gussesd as 0")
+        {
+            TS <- 0
+            warning("Cannot find 'latency' or 'start' event, true experiment start is gussesd as 0")
+        }
     }
     
     # re-calibrate(offset) time using start time
-    b$start_miliSec <- b$start_miliSec - TS
-    b$end_miliSec <- b$end_miliSec - TS
+    courtshipData$start_miliSec <- courtshipData$start_miliSec - TS
+    courtshipData$end_miliSec <- courtshipData$end_miliSec - TS
     
+    nTL <- length(listTL)
+    nCatg <- length(listCatg) 
     # initialize summary data frame use tool function
     dfCatg <- createCourtshipDf(nCatg*nTL)
     
+    fn <- barename(file)
     # iterate through each time lenght and each category, putting info. one by one
     for ( iCatg in 1:nCatg) 
         {
@@ -116,10 +135,11 @@ sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 24
             {
                 dfCatg[(iCatg-1)*nTL+iTL, 'filename'] <- fn
                 
-                tmpDfCatg <- sumDfCourtshipByTL(listTL[iTL], listCatg[iCatg], b)
+                tmpDfCatg <- sumDfCourtshipByTL(listTL[iTL], listCatg[iCatg], courtshipData)
                 dfCatg[(iCatg-1)*nTL+iTL, 'category'] <- tmpDfCatg[, 'category']
                 dfCatg[(iCatg-1)*nTL+iTL, 'total_time'] <- tmpDfCatg[, 'total_time']
                 dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
+                dfCatg[(iCatg-1)*nTL+iTL, 'time'] <- tmpDfCatg[, 'time']
                 dfCatg[(iCatg-1)*nTL+iTL, 'occurence'] <- tmpDfCatg[, 'occurence']
                 
                 tmpDfCatg <- NULL
@@ -133,114 +153,120 @@ sumCourtshipSrt <- function(srtfile, listTL=as.integer(c(60000, 120000, 180000, 
 {
     # sumCourtshipSrt will analyze a .srt file for a summary of each provided category by each provided time length 
     # IMPORTANT: expects one and only one 'latency' event indicating true start(not video start)
+    # DEPRECATED: use sumCourtshipFile instead
     
-    nTL <- length(listTL)
-    nCatg <- length(listCatg)  
-    # strip all extensions, e.g. base.ext.ension --> base
-    fn <- barename(srtfile)
+    return(sumCourtshipFile(file=srtfile, listTL=listTL, listCatg=listCatg, failOnStartTime=failOnStartTime))
 
-    if(!exists("read.srt", mode="function"))
-    {
-        warning("Requires 'csv_from_srt.R'. Do source('full\\path\\to\\csv_from_srt.R')")
-    }
-    b<-read.srt(file=srtfile)
-    
-    # get start time
-    if (sum(b$text=='latency') == 1)
-    {# exactly one "latency" event indicate true start of the experiment
-        TS <- b[b$text=='latency', 'start_miliSec']
-    } 
-    else 
-    {# otherwise assume start time = 0
-        TS <- 0
+    # nTL <- length(listTL)
+    # nCatg <- length(listCatg)  
+    # # strip all extensions, e.g. base.ext.ension --> base
+    # fn <- barename(srtfile)
 
-        if(failOnStartTime)
-            stop("Cannot find session start time: one and only one 'latency' event required\n\tUse first event instead by setting failOnStartTime=FALSE")
-        else 
-            warning("'latency' event not valid, true start was gussesd as 0")
-    }
+    # if(!exists("read.srt", mode="function"))
+    # {
+    #     warning("Requires 'csv_from_srt.R'. Do source('full\\path\\to\\csv_from_srt.R')")
+    # }
+    # b<-read.srt(file=srtfile)
     
-    # re-calibrate(offset) time using start time
-    b$start_miliSec <- b$start_miliSec - TS
-    b$end_miliSec <- b$end_miliSec - TS
+    # # get start time
+    # if (sum(b$text=='latency') == 1)
+    # {# exactly one "latency" event indicate true start of the experiment
+    #     TS <- b[b$text=='latency', 'start_miliSec']
+    # } 
+    # else 
+    # {# otherwise assume start time = 0
+    #     TS <- 0
+
+    #     if(failOnStartTime)
+    #         stop("Cannot find session start time: one and only one 'latency' event required\n\tUse first event instead by setting failOnStartTime=FALSE")
+    #     else 
+    #         warning("'latency' event not valid, true start was gussesd as 0")
+    # }
     
-    # initialize summary data frame use tool function
-    # dfCatg <- data.frame(filename = rep(fn, nCatg*nTL), category = rep("", nCatg*nTL), total_time = rep("", nCatg*nTL), time_percent = rep(NA, nCatg*nTL), occurence = rep(NA, nCatg*nTL), stringsAsFactors=FALSE)
-    dfCatg <- createCourtshipDf(nCatg*nTL)
+    # # re-calibrate(offset) time using start time
+    # b$start_miliSec <- b$start_miliSec - TS
+    # b$end_miliSec <- b$end_miliSec - TS
     
-    # iterate through each time lenght and each category, putting info. one by one
-    for ( iCatg in 1:nCatg) 
-        {
-        for ( iTL in 1:nTL)
-            {
-                dfCatg[(iCatg-1)*nTL+iTL, 'filename'] <- fn
+    # # initialize summary data frame use tool function
+    # # dfCatg <- data.frame(filename = rep(fn, nCatg*nTL), category = rep("", nCatg*nTL), total_time = rep("", nCatg*nTL), time_percent = rep(NA, nCatg*nTL), occurence = rep(NA, nCatg*nTL), stringsAsFactors=FALSE)
+    # dfCatg <- createCourtshipDf(nCatg*nTL)
+    
+    # # iterate through each time lenght and each category, putting info. one by one
+    # for ( iCatg in 1:nCatg) 
+    #     {
+    #     for ( iTL in 1:nTL)
+    #         {
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'filename'] <- fn
                 
-                tmpDfCatg <- sumDfCourtshipByTL(listTL[iTL], listCatg[iCatg], b)
-                dfCatg[(iCatg-1)*nTL+iTL, 'category'] <- tmpDfCatg[, 'category']
-                dfCatg[(iCatg-1)*nTL+iTL, 'total_time'] <- tmpDfCatg[, 'total_time']
-                dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
-                dfCatg[(iCatg-1)*nTL+iTL, 'occurence'] <- tmpDfCatg[, 'occurence']
+    #             tmpDfCatg <- sumDfCourtshipByTL(listTL[iTL], listCatg[iCatg], b)
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'category'] <- tmpDfCatg[, 'category']
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'total_time'] <- tmpDfCatg[, 'total_time']
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'occurence'] <- tmpDfCatg[, 'occurence']
                 
-                tmpDfCatg <- NULL
-            }
-        }
+    #             tmpDfCatg <- NULL
+    #         }
+    #     }
      
-    return(dfCatg)
+    # return(dfCatg)
 }
 
 sumCourtshipCsv <- function(csvfile, listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation'), failOnStartTime=TRUE)
 {
     # sumCourtshipCsv will analyze a .srt.csv file for a summary of each provided category by each provided time length 
     # IMPORTANT: expects one and only one 'latency' event indicating true start(not video start)
+    # DEPRECATED: use sumCourtshipFile instead
     
-    nTL <- length(listTL)
-    nCatg <- length(listCatg)  
-    # strip all extensions, e.g. base.ext.ension --> base
-    fn <- barename(csvfile)
-    
-    b<-read.csv(file=csvfile, header=T)
-    
-    # get start time
-    if (sum(b$text=='latency') == 1)
-    {# exactly one "latency" event indicate true start of the experiment
-        TS <- b[b$text=='latency', 'start_miliSec']
-    } 
-    else 
-    {# otherwise assume start time = 0
-        TS <- 0
+    return(sumCourtshipFile(file=csvfile, listTL=listTL, listCatg=listCatg, failOnStartTime=failOnStartTime))
 
-        if(failOnStartTime)
-            stop("Cannot find session start time: one and only one 'latency' event required\n\tUse first event instead by setting failOnStartTime=FALSE")
-        else 
-            warning("'latency' event not valid, true start was gussesd as 0")
-    }
+    # nTL <- length(listTL)
+    # nCatg <- length(listCatg)  
+    # # strip all extensions, e.g. base.ext.ension --> base
+    # fn <- barename(csvfile)
     
-    # re-calibrate(offset) time using start time
-    b$start_miliSec <- b$start_miliSec - TS
-    b$end_miliSec <- b$end_miliSec - TS
+    # b<-read.csv(file=csvfile, header=T)
     
-    # initialize summary data frame use tool function
-    # dfCatg <- data.frame(filename = rep(fn, nCatg*nTL), category = rep("", nCatg*nTL), total_time = rep("", nCatg*nTL), time_percent = rep(NA, nCatg*nTL), occurence = rep(NA, nCatg*nTL), stringsAsFactors=FALSE)
-    dfCatg <- createCourtshipDf(nCatg*nTL)
+    # # get start time
+    # if (sum(b$text=='latency') == 1)
+    # {# exactly one "latency" event indicate true start of the experiment
+    #     TS <- b[b$text=='latency', 'start_miliSec']
+    # } 
+    # else 
+    # {# otherwise assume start time = 0
+    #     TS <- 0
+
+    #     if(failOnStartTime)
+    #         stop("Cannot find session start time: one and only one 'latency' event required\n\tUse first event instead by setting failOnStartTime=FALSE")
+    #     else 
+    #         warning("'latency' event not valid, true start was gussesd as 0")
+    # }
     
-    # iterate through each time lenght and each category, putting info. one by one
-    for ( iCatg in 1:nCatg) 
-        {
-        for ( iTL in 1:nTL)
-            {
-                dfCatg[(iCatg-1)*nTL+iTL, 'filename'] <- fn
+    # # re-calibrate(offset) time using start time
+    # b$start_miliSec <- b$start_miliSec - TS
+    # b$end_miliSec <- b$end_miliSec - TS
+    
+    # # initialize summary data frame use tool function
+    # # dfCatg <- data.frame(filename = rep(fn, nCatg*nTL), category = rep("", nCatg*nTL), total_time = rep("", nCatg*nTL), time_percent = rep(NA, nCatg*nTL), occurence = rep(NA, nCatg*nTL), stringsAsFactors=FALSE)
+    # dfCatg <- createCourtshipDf(nCatg*nTL)
+    
+    # # iterate through each time lenght and each category, putting info. one by one
+    # for ( iCatg in 1:nCatg) 
+    #     {
+    #     for ( iTL in 1:nTL)
+    #         {
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'filename'] <- fn
                 
-                tmpDfCatg <- sumDfCourtshipByTL(listTL[iTL], listCatg[iCatg], b)
-                dfCatg[(iCatg-1)*nTL+iTL, 'category'] <- tmpDfCatg[, 'category']
-                dfCatg[(iCatg-1)*nTL+iTL, 'total_time'] <- tmpDfCatg[, 'total_time']
-                dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
-                dfCatg[(iCatg-1)*nTL+iTL, 'occurence'] <- tmpDfCatg[, 'occurence']
+    #             tmpDfCatg <- sumDfCourtshipByTL(listTL[iTL], listCatg[iCatg], b)
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'category'] <- tmpDfCatg[, 'category']
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'total_time'] <- tmpDfCatg[, 'total_time']
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'occurence'] <- tmpDfCatg[, 'occurence']
                 
-                tmpDfCatg <- NULL
-            }
-        }
+    #             tmpDfCatg <- NULL
+    #         }
+    #     }
      
-    return(dfCatg)
+    # return(dfCatg)
 }
 
 sumCourtshipDir <- function(dir="", csvDir="", out=TRUE, outfile="", listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation'), na.zero=FALSE, failOnStartTime=TRUE)
