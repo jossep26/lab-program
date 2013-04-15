@@ -39,11 +39,61 @@ readCourtshipFile <- function(file)
     }
     else
     {
-        print("Please provide .srt or .csv file only")
+        print("Cannot read file other than .srt or .csv")
         return(NULL)
     }
     
     return(data)
+}
+
+getCourtshipFileList <- function(dir="", readSrt=TRUE)
+{# tool function
+    # getCourtshipFileList will return a list of courtship analysis files.
+
+    # initializing directory selection
+    if (dir=="")
+    {
+        dir <- choose.dir(caption="Select Folder containing courtship files")
+        if ( is.na(dir) ) 
+        {
+            print("Directory selection has been canceled.")
+            return(NULL)
+        }
+    }
+
+    # reading file list
+    if (readSrt)
+    {
+        if(!exists("read.srt", mode="function"))
+        {
+            print("Requires 'csv_from_srt.R'. Do source('full\\path\\to\\csv_from_srt.R')")
+            return(NULL)
+        }
+
+        listFile <- list.files(path=dir, pattern="*[.]srt$", full.names=TRUE)
+        if ( identical(listFile, character(0)) ) 
+        {
+            listFile <- list.files(path=dir, pattern="[.]srt.csv$", full.names=TRUE)
+            if ( identical(listFile, character(0)) ) 
+            {
+                warning("No .srt.csv or .srt files detected.")
+            }
+        }
+    }
+    else
+    {
+        listFile <- list.files(path=dir, pattern="[.]srt.csv$", full.names=TRUE)
+        if ( identical(listFile, character(0)) ) 
+        {
+            listFile <- list.files(path=dir, pattern="[.]srt$", full.names=TRUE)
+            if ( identical(listFile, character(0)) ) 
+            {
+                warning("No .srt.csv or .srt files detected.")
+            }
+        }
+    }
+
+    return(listFile)
 }
 
 sumDfCourtshipByTL <- function(TL, textCatg, dfCourtship)
@@ -269,38 +319,21 @@ sumCourtshipCsv <- function(csvfile, listTL=as.integer(c(60000, 120000, 180000, 
     # return(dfCatg)
 }
 
-sumCourtshipDir <- function(dir="", csvDir="", out=TRUE, outfile="", listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation'), na.zero=FALSE, failOnStartTime=TRUE)
+sumCourtshipDir <- function(dir="", readSrt=TRUE, csvDir="", out=TRUE, outfile="", listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation'), na.zero=FALSE, failOnStartTime=TRUE)
 {
     # sumCourtshipDir will calculate and return a summary of analysed srt files (the csvs)
     # it also output csv summary files
     
-    # compatibility
+    # compatibility to older versions
     if (dir=="")
     {
         dir = csvDir
     }
 
-    # initializing directory selection
-    if (dir=="")
-    {
-        dir <- choose.dir()
-        if ( is.na(dir) ) 
-        {
-            print("Directory selection has been canceled.")
-            return(NULL)
-        }
-    }
+    listFile <- getCourtshipFileList(dir=dir, readSrt=readSrt)
 
-    # reading file list
-    listFile <- list.files(path=dir, pattern="*.srt.csv", full.names=TRUE)
-    if ( identical(listFile, character(0)) ) 
-    {
-        listFile <- list.files(path=dir, pattern="*.srt", full.names=TRUE)
-        if ( identical(listFile, character(0)) ) 
-        {
-            warning("No .srt.csv or .srt files detected.")
-        }
-    }
+    if (is.null(listFile))
+        return(NULL)
 
     nFile <- length(listFile)
 
@@ -324,6 +357,7 @@ sumCourtshipDir <- function(dir="", csvDir="", out=TRUE, outfile="", listTL=as.i
     # Copy a NA=0 version
     sumCsvNoNA <- sumCsv
     sumCsvNoNA[is.na(sumCsvNoNA$time_percent), 'time_percent'] <- 0L
+    sumCsvNoNA[is.na(sumCsvNoNA$time), 'time'] <- 0L
     sumCsvNoNA[is.na(sumCsvNoNA$occurence), 'occurence'] <- 0L
     
     # save to files
@@ -335,8 +369,8 @@ sumCourtshipDir <- function(dir="", csvDir="", out=TRUE, outfile="", listTL=as.i
         }
     
         outfileNoNA <- paste(dir, "/summary_naIsZero.csv", sep="")
-        write.csv(sumCsv, file=outfile, row.names=FALSE)
-        write.csv(sumCsvNoNA, file=outfileNoNA, row.names=FALSE)
+        write.csv(format(sumCsv, scientific=FALSE), file=outfile, row.names=FALSE)
+        write.csv(format(sumCsvNoNA, scientific=FALSE), file=outfileNoNA, row.names=FALSE)
         print(paste("written to file", outfile, "and", outfileNoNA))
     }
     
@@ -346,7 +380,9 @@ sumCourtshipDir <- function(dir="", csvDir="", out=TRUE, outfile="", listTL=as.i
         return(sumCsvNoNA)
     }
     else
+    {
         return(sumCsv)
+    }
 }
 
 sumForOneCatg <- function(dfSumCourtship, catg='courtship')
@@ -451,59 +487,60 @@ sumCatgForAll <- function(dfSumCourtship)
     return(sumDf)
 }
 
-readCourtshipLatency <- function(latencyText="latency", csvDir="", out=TRUE, outfile=paste(csvDir, "/", latencyText, ".csv", sep=""))
+readCourtshipLatency <- function(latencyText="latency", dir="", csvDir="", readSrt=TRUE, out=TRUE, outfile="")
 {
-    # initializing directory selection
-    if (csvDir=="")
+    # readCourtshipLatency returns a data frame of 'latency' interval of all valid files in a directory.
+    # IMPORTANT: assumes 1 and only 1 'latency' event per file, otherwise produces NA
+
+    # compatibility to older versions
+    if (dir=="")
     {
-        csvDir <- choose.dir()
-        if ( is.na(csvDir) )
-        {
-            print("Directory selection has been canceled.")
-            return(NULL)
-        }
-        outfile <- paste(csvDir, "/", latencyText, ".csv", sep="")
+        dir = csvDir
     }
-    
-    # reading file list
-    listCsv <- list.files(path=csvDir, pattern="*.srt.csv", full.names=TRUE)
-    if ( identical(listCsv, character(0)) ) 
-    {
-        print("No .srt.csv file detected.")
+
+    listFile <- getCourtshipFileList(dir=dir, readSrt=readSrt)
+
+    if (is.null(listFile))
         return(NULL)
-    }
-    nFile <- length(listCsv)
+
+    nFile <- length(listFile)
     
     # prepare output
     latencyDf <- data.frame(filename=rep("", nFile), latency=rep(NA, nFile), stringsAsFactors=FALSE)
     colnames(latencyDf)[2] <- latencyText
     
-    
+    # calculate 'latency' interval
     for ( iFile in 1:nFile )
     {
-        print(paste("Reading", listCsv[iFile], "..."))
+        print(paste("Reading", listFile[iFile], "..."))
         
-        tmpDf <- read.csv(file=listCsv[iFile], header=TRUE)
+        tmpDf <- readCourtshipFile(file=listFile[iFile])
         tmpDf <- tmpDf[tmpDf$text==latencyText, c('start_miliSec', 'end_miliSec')]
         
-        latencyDf[iFile, 'filename'] <- barename(listCsv[iFile])
+        latencyDf[iFile, 'filename'] <- barename(listFile[iFile])
         
         if ( (!is.null(tmpDf))&(nrow(tmpDf)==as.integer(1)) )
         {
             latencyDf[iFile, latencyText] <- tmpDf[, 'end_miliSec'] - tmpDf[, 'start_miliSec']
+            print("...done.")
         }
-        
-        print("...done.")
+        else
+        {
+            print("wrong!")
+        }
     }
     
     if (out)
     {
-        write.csv(latencyDf, file=outfile, row.names=FALSE)
+        if (outfile=="")
+        {
+            outfile <- paste(dir, "/", latencyText, ".csv", sep="")
+        }
+        write.csv(format(latencyDf, scientific=FALSE), file=outfile, row.names=FALSE)
         print(paste("Written results to file", outfile))
     }
     
     return(latencyDf)
-    
 }
 
 unblindCourtshipCsv <- function(summaryCsv="", unblindCsv="")
@@ -572,9 +609,9 @@ sumAndUnblindCourtshipDir <- function(csvDir="", unblindFile="", out=FALSE, list
     
     # do summary analysis on all .srt.csv 
     sumDf <- sumCourtshipDir(csvDir=csvDir, out=out, listCatg=listCatg, listTL=listTL, na.zero=na.zero)
+    sumDf <- transform(sumDf, filename = barename(filename))
 
     # prepare 'unblind' data
-    sumDf <- transform(sumDf, filename = barename(filename))
     unblind <- read.csv(file=unblindFile, stringsAsFactors=F)
     unblind <- transform(unblind, filename = barename(filename))
     
@@ -591,7 +628,7 @@ sumAndUnblindCourtshipDir <- function(csvDir="", unblindFile="", out=FALSE, list
     if (out)
     {
         outfile <- paste(csvDir, "/unblindedsummary.csv", sep="")
-        write.csv(unblind_data, file=outfile, row.names=FALSE)
+        write.csv(format(unblind_data, scientific=FALSE), file=outfile, row.names=FALSE)
         print(paste("Written results to file", outfile))
     }
     
@@ -644,7 +681,7 @@ readAndUnblindCourtshipLatency <- function(csvDir="", unblindFile="", out=FALSE,
         else
         {
             noNAfile <- paste(csvDir, "/unblinded", latencyText, "noNA.csv", sep="")
-            write.csv(noNA, file=noNAfile, row.names=FALSE)
+            write.csv(format(noNA, scientific=FALSE), file=noNAfile, row.names=FALSE)
             print(paste("Written results to file", noNAfile))            
         }
         
@@ -654,7 +691,7 @@ readAndUnblindCourtshipLatency <- function(csvDir="", unblindFile="", out=FALSE,
         if (out)
         {
             outfile <- paste(csvDir, "/unblinded", latencyText, ".csv", sep="")
-            write.csv(unblind_data, file=outfile, row.names=FALSE)
+            write.csv(format(unblind_data, scientific=FALSE), file=outfile, row.names=FALSE)
             print(paste("Written results to file", outfile))
         }
     }
@@ -663,6 +700,7 @@ readAndUnblindCourtshipLatency <- function(csvDir="", unblindFile="", out=FALSE,
 }
 
 ###### non-cumulative time_percent #####
+# TODO: refactor these into functions above
 
 sumCourtshipCsv2 <- function(csvfile, listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation'))
 {
