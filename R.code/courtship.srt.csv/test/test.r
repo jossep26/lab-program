@@ -22,9 +22,13 @@ b$end_miliSec == bb$end_miliSec
 
 #########################
 ## test summary of one file
-sum_a <- sumCourtshipFile(file='20120322-CH5-03.srt', listTL=as.integer(c(60000, 300000)), listCatg=c('wing_extension', 'courtship'), failOnStartTime=TRUE)
+sum_a <- sumCourtshipFile(file='20120322-CH5-03.srt', listTL=as.integer(c(60000, 300000, 12000, 120000)), listCatg=c('wing_extension', 'courtship'), failOnStartTime=TRUE)
 sum_aa <- sumCourtshipFile(file='20120322-CH5-03.srt.csv', listTL=as.integer(c(60000, 300000)), listCatg=c('wing_extension', 'courtship'), failOnStartTime=TRUE)
 
 ########################
 ## test summary of a dir
-sum_d_a <- sumCourtshipDir(dir='.', out=FALSE, listTL=as.integer(c(60000, 300000)), listCatg=c('courtship', 'orientation'))
+sum_d_a <- sumCourtshipDir(dir='.', out=FALSE, listTL=as.integer(c(60000, 300000, 120000, 180000)), listCatg=c('courtship', 'orientation'))
+
+#########################
+## test latency of a dir
+sum_l_a <- readCourtshipLatency(dir='.', out=FALSE)

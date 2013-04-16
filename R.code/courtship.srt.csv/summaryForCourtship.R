@@ -2,7 +2,11 @@ createCourtshipDf <- function(nRows)
 {# tool function
 
     # createCourtshipDf will create an empty data frame for holding courtship summary
-    df <- data.frame(filename = rep("", nRows), category = rep("", nRows), total_time = rep("", nRows), time_percent = rep(NA, nRows), time = rep(NA, nRows), occurence = rep(NA, nRows), stringsAsFactors=FALSE)
+    df <- data.frame(filename = rep("", nRows), category = rep("", nRows), 
+                total_time = rep("", nRows), occurence = rep(as.integer(NA), nRows), 
+                time_percent = rep(NA, nRows), time = rep(as.integer(NA), nRows), 
+                time_percent_nc = rep(NA, nRows), time_nc = rep(as.integer(NA), nRows), 
+                stringsAsFactors=FALSE)
     
     return(df)
 }
@@ -48,7 +52,8 @@ readCourtshipFile <- function(file)
 
 getCourtshipFileList <- function(dir="", readSrt=TRUE)
 {# tool function
-    # getCourtshipFileList will return a list of courtship analysis files.
+    #  getCourtshipFileList will return a list of courtship analysis files in specified directory. Will try to read .srt files by default; if not found any, will try to read .srt.csv files. Or when readSrt=FALSE will try to read .srt.csv first.
+    #  NOTE: When readSrt=TRUE (default), even if one .srt file exist, will not try to read any .srt.csv files.
 
     # initializing directory selection
     if (dir=="")
@@ -61,9 +66,8 @@ getCourtshipFileList <- function(dir="", readSrt=TRUE)
         }
     }
 
-    # reading file list
     if (readSrt)
-    {
+    {# attempt to read .srt, if none exists, read .srt.csv. 
         if(!exists("read.srt", mode="function"))
         {
             print("Requires 'csv_from_srt.R'. Do source('full\\path\\to\\csv_from_srt.R')")
@@ -81,7 +85,7 @@ getCourtshipFileList <- function(dir="", readSrt=TRUE)
         }
     }
     else
-    {
+    {# attempt to read .srt.csv, if none exists, read .srt
         listFile <- list.files(path=dir, pattern="[.]srt.csv$", full.names=TRUE)
         if ( identical(listFile, character(0)) ) 
         {
@@ -97,11 +101,21 @@ getCourtshipFileList <- function(dir="", readSrt=TRUE)
 }
 
 sumDfCourtshipByTL <- function(TL, textCatg, dfCourtship)
-{# tool function
-
-    #  sumDfCourtshipByTL will return summary about the given behavior category and occurence of _A_ given 'category' for _A_ given time length in a courtship data frame
+{#  sumDfCourtshipByTL will return summary about the given behavior category and occurence of _A_ given 'category' within _A_ given time length in a courtship data frame
     #  IMPORTANT: assumes start time(i.e. offset) = 0
     #  IMPORTANT: if event's end time > TL, the end time is set to TL
+
+    if(!is.integer(TL))
+    {
+        print("TL must be an integer indicating mili-seconds!")
+        return(NULL)
+    }
+
+    if(!is.character(textCatg))
+    {
+        print("textCatg must be a string indicating behaviorial category!")
+        return(NULL)
+    }
 
     # prepare output data frame
     sumDf <- data.frame(category = textCatg, total_time = TL, time_percent = NA, time = NA, occurence = NA, stringsAsFactors=FALSE)
@@ -124,7 +138,7 @@ sumDfCourtshipByTL <- function(TL, textCatg, dfCourtship)
     courtshipTextCatg[, 'interval_miliSec'] <- courtshipTextCatg[, 'end_miliSec'] - courtshipTextCatg[, 'start_miliSec']
 
     # calculate the fraction of time of this category, in this time length
-    sumDf$time <- sum(courtshipTextCatg[, 'interval_miliSec'])
+    sumDf$time <- as.integer(sum(courtshipTextCatg[, 'interval_miliSec']))
     sumDf$time_percent <- sumDf$time / TL
 
     # calculate the occurence of this behavior category (namely the number of rows)
@@ -136,6 +150,19 @@ sumDfCourtshipByTL <- function(TL, textCatg, dfCourtship)
 sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation', 'courtship'), failOnStartTime=TRUE)
 {# sumCourtshipSrt will analyze a .srt(.csv) file for a summary of each provided category by each provided time length 
     # IMPORTANT: expects one and only one 'latency'(or 'start') event indicating true start(not video start, rather experiment start)
+
+    if(!is.numeric(listTL))
+    {
+        print("listTL must be an array of integers, indicating mili-seconds.")
+        return(NULL)
+    }
+    listTL <- sort(as.integer(listTL), decreasing=FALSE)
+
+    if(!is.character(listCatg))
+    {
+        print("listCatg must be an array of strings, indicating behaviorial categories")
+        return(NULL)
+    }
 
     courtshipData <- readCourtshipFile(file)
     
@@ -158,7 +185,7 @@ sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 24
     {# otherwise assume start time = 0
         if(failOnStartTime)
         {
-            stop("Cannot find session start time: one and only one 'latency' or 'start' event required\n\tUse 0 instead by setting failOnStartTime=FALSE")
+            stop("Cannot find session start time: one and only one 'latency' or 'start' event required\nUse 0 instead by setting failOnStartTime=FALSE")
         }
         else 
         {
@@ -187,10 +214,18 @@ sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 24
                 tmpDfCatg <- sumDfCourtshipByTL(listTL[iTL], listCatg[iCatg], courtshipData)
                 dfCatg[(iCatg-1)*nTL+iTL, 'category'] <- tmpDfCatg[, 'category']
                 dfCatg[(iCatg-1)*nTL+iTL, 'total_time'] <- tmpDfCatg[, 'total_time']
-                dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
-                dfCatg[(iCatg-1)*nTL+iTL, 'time'] <- tmpDfCatg[, 'time']
                 dfCatg[(iCatg-1)*nTL+iTL, 'occurence'] <- tmpDfCatg[, 'occurence']
+                dfCatg[(iCatg-1)*nTL+iTL, 'time'] <- tmpDfCatg[, 'time']
+                dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
+                dfCatg[(iCatg-1)*nTL+iTL, 'time_nc'] <- tmpDfCatg[, 'time']
+                dfCatg[(iCatg-1)*nTL+iTL, 'time_percent_nc'] <- tmpDfCatg[, 'time_percent']
                 
+                if (iTL >= 2)
+                {# non-cumulative time = current - previous time(data frame line)
+                    dfCatg[(iCatg-1)*nTL+iTL, 'time_nc'] <- tmpDfCatg[, 'time'] - dfCatg[(iCatg-1)*nTL+iTL-1, 'time']
+                    dfCatg[(iCatg-1)*nTL+iTL, 'time_percent_nc'] <- dfCatg[(iCatg-1)*nTL+iTL, 'time_nc']/(listTL[iTL] - listTL[iTL-1])
+                }
+
                 tmpDfCatg <- NULL
             }
         }
@@ -352,9 +387,11 @@ sumCourtshipDir <- function(dir="", readSrt=TRUE, csvDir="", out=TRUE, outfile="
     
     # Copy a NA=0 version
     sumCsvNoNA <- sumCsv
-    sumCsvNoNA[is.na(sumCsvNoNA$time_percent), 'time_percent'] <- 0L
-    sumCsvNoNA[is.na(sumCsvNoNA$time), 'time'] <- 0L
     sumCsvNoNA[is.na(sumCsvNoNA$occurence), 'occurence'] <- 0L
+    sumCsvNoNA[is.na(sumCsvNoNA$time), 'time'] <- 0L
+    sumCsvNoNA[is.na(sumCsvNoNA$time_percent), 'time_percent'] <- 0L
+    sumCsvNoNA[is.na(sumCsvNoNA$time_nc), 'time_nc'] <- 0L
+    sumCsvNoNA[is.na(sumCsvNoNA$time_percent_nc), 'time_percent_nc'] <- 0L    
     
     # save to files
     if (out)
@@ -572,7 +609,7 @@ unblindCourtshipCsv <- function(summaryCsv="", unblindCsv="")
     {# there must be a reason for this, but i have forgotten
         unblind_data <- transform(unblind_data, total_time = as.character(as.integer(total_time)))
     }
- #    unblind_data <- transform(unblind_data, total_time = as.character(total_time))
+    #unblind_data <- transform(unblind_data, total_time = as.character(total_time))
     
     return(unblind_data)
 }
@@ -701,14 +738,15 @@ readAndUnblindCourtshipLatency <- function(dir="", readSrt=TRUE, csvDir="", unbl
 }
 
 ###### non-cumulative time_percent #####
-# TODO: refactor these into functions above
+##  DEPRECATED: use functions above instead, already contained in output data frame
 
 sumCourtshipCsv2 <- function(csvfile, listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation'))
-{
+{#  DEPRECATED: use sumCourtshipFile instead
     # sumCourtshipCsv will analyze a .srt.csv file for a summary of 
     #   each provided category by each provided time length.
     #   IMPORTANT: time_percent is non-cumulative
     
+
     nTL <- length(listTL)
     nCatg <- length(listCatg) 
     
@@ -717,23 +755,23 @@ sumCourtshipCsv2 <- function(csvfile, listTL=as.integer(c(60000, 120000, 180000,
     
     # calculate non-cumulative time_pecent from cumulative time_percent
     for ( iCatg in 1:nCatg )
-        {
+    {
         for ( iTL in 2:nTL )
-            {
+        {
             dfCatg[(dfCatg$category==listCatg[iCatg])&(dfCatg$total_time==listTL[iTL]),]$time_percent <-
             (listTL[iTL] *
              d[(d$category==listCatg[iCatg])&(d$total_time==listTL[iTL]),]$time_percent -
              listTL[iTL-1] * 
              d[(d$category==listCatg[iCatg])&(d$total_time==listTL[iTL-1]),]$time_percent
              ) / (listTL[iTL] - listTL[iTL-1])
-             }
-        }
+         }
+    }
     
     return(dfCatg)
 }
 
 sumCourtshipDir2 <- function(csvDir="", out=TRUE, outfile=paste(csvDir, "/summary.csv", sep=""), listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), listCatg=c('wing_extension', 'orientation'), na.zero=FALSE)
-{
+{#  DEPRECATED: use sumCourtshipDir instead
     # sumCourtshipDir will calculate and return a summary of analysed srt files (the csvs)
     # it also output csv summary files
     
@@ -799,7 +837,7 @@ sumCourtshipDir2 <- function(csvDir="", out=TRUE, outfile=paste(csvDir, "/summar
 }
 
 sumAndUnblindCourtshipDir2 <- function(csvDir="", unblindFile="", out=FALSE, listCatg=c('courtship'), listTL=as.integer(c(60000, 120000, 180000, 240000, 300000)), na.zero=TRUE)
-{
+{#  DEPRECATED: use sumAndUnblindCourtshipDir instead
     # sumAndUnblindCourtshipDir will summarize all the *.srt.csv files,
     #   and add exp_group info into all the lines in summary(unblinding). 
     #   IMPORTANT: time_percent is non-cumulative
