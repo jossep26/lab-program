@@ -369,13 +369,25 @@ sumCourtshipDir <- function(dir="", readSrt=TRUE, csvDir="", out=TRUE, outfile="
     nFile <- length(listFile)
 
     # preparing Time Length list (a vector of time points) and Category list (a vector of behaviorial tags)
+    if(!is.numeric(listTL))
+    {
+        print("listTL must be an array of integers, indicating mili-seconds.")
+        return(NULL)
+    }
+    listTL <- sort(as.integer(listTL), decreasing=FALSE)
+
+    if(!is.character(listCatg))
+    {
+        print("listCatg must be an array of strings, indicating behaviorial categories")
+        return(NULL)
+    }
     nTL= length(listTL)
     nCatg=length(listCatg)
     
     # initialize and prepare the output data frame
     sumCsv <- createCourtshipDf(nFile*nTL*nCatg)
     
-    # iterate through each csv file, calculating each summary, then inject them to blocks of previously prepared data frame
+    # iterate through each csv file, calculating each summary, then inject them to blocks(rows) of previously prepared data frame
     for ( iFile in 1:nFile )
     {
         print(paste("Begin processing", listFile[iFile], "..."))
@@ -541,7 +553,7 @@ readCourtshipLatency <- function(latencyText="latency", dir="", csvDir="", readS
     latencyDf <- data.frame(filename=rep("", nFile), latency=rep(NA, nFile), stringsAsFactors=FALSE)
     colnames(latencyDf)[2] <- latencyText
     
-    # calculate 'latency' interval
+    # calculate 'latency' interval, don't terminate when wrong
     for ( iFile in 1:nFile )
     {
         print(paste("Reading", listFile[iFile], "..."))
@@ -558,8 +570,10 @@ readCourtshipLatency <- function(latencyText="latency", dir="", csvDir="", readS
         }
         else
         {
-            print("wrong!")
+            print("...wrong!")
         }
+
+        tmpDf <- NULL
     }
     
     if (out)
@@ -680,7 +694,7 @@ readAndUnblindCourtshipLatency <- function(dir="", readSrt=TRUE, csvDir="", unbl
     # initializing directory selection
     if (dir=="")
     {
-        dir <- choose.dir(default=getwd(), caption="Select Directory of courtship files")
+        dir <- choose.dir(default=getwd(), caption="Select Directory of courtship files for latency")
         if ( is.na(dir) )
         {
             print("Directory selection has been canceled.")
@@ -690,14 +704,17 @@ readAndUnblindCourtshipLatency <- function(dir="", readSrt=TRUE, csvDir="", unbl
     
     if (unblindFile=="")
     {
-        unblindFile <- "unblind.csv"
+        unblindFile <- choose.files(default=paste(dir, "/unblind.csv", sep=""), caption="Select UNBLIND csv file")
+        if ( identical(unblindFile, character(0)) ) 
+        {
+            print("Ublind file selection has been canceled.")
+            return(NULL)
+        }
     }
-
-    unblindCsv <- paste(dir, "/", unblindFile, sep="")
     
     latencyDf <- readCourtshipLatency(dir=dir, readSrt=readSrt, latencyText=latencyText, out=FALSE)
     latencyDf <- transform(latencyDf, filename = barename(filename))
-    unblind <- read.csv(file=unblindCsv, stringsAsFactors=F)
+    unblind <- read.csv(file=unblindFile, stringsAsFactors=F)
     unblind <- transform(unblind, filename = barename(filename))
 
     print("Adding experimental group info (Unblinding)...")
