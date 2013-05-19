@@ -9,10 +9,20 @@ splitCourtshipFile <- function(file, startText="start", preName="", postName="")
 
     data <- readCourtshipFile(file)
 
-    if (sum(data$text==startText) != 1)
+    if (sum(data$text==startText) > 1)
     {
-        warning(paste("Require 1 and only 1 '", startText, "' event."))
+        warning(paste(file, ": Require 0 or 1 '", startText, "' event.", sep=""))
         return(NULL)
+    }
+
+    if (sum(data$text==startText) == 0)
+    {
+        print(paste(file, ": No '", startText, "' detected.", sep=""))
+
+        write.csv(format(data, scientific=FALSE), file=preName, row.names=FALSE)
+
+        print(paste("Saved as first part to", preName))
+        return()
     }
 
     split_time <- data[data$text==startText, 'start_miliSec']
@@ -63,6 +73,41 @@ splitCourtshipFile <- function(file, startText="start", preName="", postName="")
         print(paste("Output second part of", file, "to", postName))
     } else {
         print(paste("WARNING:", postName, " NOT saved -- file already exists!"))
+    }
+}
+
+
+batchSplitCourtshipFile <- function(dir="", startText="start", addToPre="", addToPost="")
+{# will do batch split files on a directory
+    # initializing directory selection
+    if (dir=="")
+    {
+        dir <- choose.dir(default=getwd(), caption="Select Directory of courtship files")
+        if ( is.na(dir) )
+        {
+            print("Directory selection has been canceled.")
+            return(NULL)
+        }
+    }
+
+    listFile <- getCourtshipFileList(dir=dir, readSrt=TRUE)
+
+    if (is.null(listFile))
+        return(NULL)
+
+    nFile <- length(listFile)
+
+    # iterate through each file, calculating each summary, then inject them to blocks(rows) of previously prepared data frame
+    for ( iFile in 1:nFile )
+    {
+        print(paste("Begin splitting", listFile[iFile], "..."))
+
+        barefnInput <- sub("[.][^.]*$", "\\1", basename(listFile[iFile]), perl=T)
+
+        preName <- paste(dir, "/", barefnInput, addToPre, ".csv", sep="")
+        postName <- paste(dir, "/", barefnInput, addToPost, ".csv", sep="")        
+        
+        splitCourtshipFile(file=listFile[iFile], startText=startText, preName=preName, postName=postName)
     }
 
 }
