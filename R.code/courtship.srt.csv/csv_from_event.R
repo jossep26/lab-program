@@ -13,7 +13,7 @@ csvFromEvent <- function(ffnInput="", ffnOutput="", dfLabel=NULL)
         }
     }
     
-    # check filename integrety
+    # check filename integrity
     basefnInput <- basename(ffnInput)
     if (grepl("^[.~]", basefnInput) | !grepl("[.]event$", basefnInput))
     {

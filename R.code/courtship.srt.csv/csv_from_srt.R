@@ -90,7 +90,7 @@ csvFromSrt <- function(ffnInput="", ffnOutput="")
         }
     }
     
-    # check filename integrety
+    # check filename integrity
     basefnInput <- basename(ffnInput)
     if (grepl("^[.~]", basefnInput) | !grepl("[.]srt$", basefnInput))
     {

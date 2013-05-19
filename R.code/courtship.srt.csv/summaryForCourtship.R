@@ -3,7 +3,7 @@ createCourtshipDf <- function(nRows)
 
     # createCourtshipDf will create an empty data frame for holding courtship summary
     df <- data.frame(filename = rep("", nRows), category = rep("", nRows), 
-                total_time = rep("", nRows), occurence = rep(as.integer(NA), nRows), 
+                total_time = rep("", nRows), occurrence = rep(as.integer(NA), nRows), 
                 time_percent = rep(NA, nRows), time = rep(as.integer(NA), nRows), 
                 time_percent_nc = rep(NA, nRows), time_nc = rep(as.integer(NA), nRows), 
                 stringsAsFactors=FALSE)
@@ -101,7 +101,7 @@ getCourtshipFileList <- function(dir="", readSrt=TRUE)
 }
 
 sumDfCourtshipByTL <- function(TL, textCatg, dfCourtship)
-{#  sumDfCourtshipByTL will return summary about the given behavior category and occurence of _A_ given 'category' within _A_ given time length in a courtship data frame
+{#  sumDfCourtshipByTL will return summary about the given behavior category and occurrence of _A_ given 'category' within _A_ given time length in a courtship data frame
     #  IMPORTANT: assumes start time(i.e. offset) = 0
     #  IMPORTANT: if event's end time > TL, the end time is set to TL
 
@@ -113,12 +113,12 @@ sumDfCourtshipByTL <- function(TL, textCatg, dfCourtship)
 
     if(!is.character(textCatg))
     {
-        print("textCatg must be a string indicating behaviorial category!")
+        print("textCatg must be a string indicating behavioral category!")
         return(NULL)
     }
 
     # prepare output data frame
-    sumDf <- data.frame(category = textCatg, total_time = TL, time_percent = NA, time = NA, occurence = NA, stringsAsFactors=FALSE)
+    sumDf <- data.frame(category = textCatg, total_time = TL, time_percent = NA, time = NA, occurrence = NA, stringsAsFactors=FALSE)
 
     # if category does not exist, all the summary should be NA
     ckCatg <- dfCourtship$text==textCatg
@@ -141,8 +141,8 @@ sumDfCourtshipByTL <- function(TL, textCatg, dfCourtship)
     sumDf$time <- as.integer(sum(courtshipTextCatg[, 'interval_miliSec']))
     sumDf$time_percent <- sumDf$time / TL
 
-    # calculate the occurence of this behavior category (namely the number of rows)
-    sumDf$occurence <- length(courtshipTextCatg[, 'interval_miliSec'])
+    # calculate the occurrence of this behavior category (namely the number of rows)
+    sumDf$occurrence <- length(courtshipTextCatg[, 'interval_miliSec'])
   
     return(sumDf)
 }
@@ -160,7 +160,7 @@ sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 24
 
     if(!is.character(listCatg))
     {
-        print("listCatg must be an array of strings, indicating behaviorial categories")
+        print("listCatg must be an array of strings, indicating behavioral categories")
         return(NULL)
     }
 
@@ -190,7 +190,7 @@ sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 24
         else 
         {
             TS <- 0
-            warning("Cannot find 'latency' or 'start' event, true experiment start is gussesd as 0")
+            warning("Cannot find 'latency' or 'start' event, true experiment start is guessed as 0")
         }
     }
     
@@ -204,7 +204,7 @@ sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 24
     dfCatg <- createCourtshipDf(nCatg*nTL)
     
     fn <- barename(file)
-    # iterate through each time lenght and each category, putting info. one by one
+    # iterate through each time length and each category, putting info. one by one
     for ( iCatg in 1:nCatg) 
         {
         for ( iTL in 1:nTL)
@@ -214,7 +214,7 @@ sumCourtshipFile <- function(file, listTL=as.integer(c(60000, 120000, 180000, 24
                 tmpDfCatg <- sumDfCourtshipByTL(listTL[iTL], listCatg[iCatg], courtshipData)
                 dfCatg[(iCatg-1)*nTL+iTL, 'category'] <- tmpDfCatg[, 'category']
                 dfCatg[(iCatg-1)*nTL+iTL, 'total_time'] <- tmpDfCatg[, 'total_time']
-                dfCatg[(iCatg-1)*nTL+iTL, 'occurence'] <- tmpDfCatg[, 'occurence']
+                dfCatg[(iCatg-1)*nTL+iTL, 'occurrence'] <- tmpDfCatg[, 'occurrence']
                 dfCatg[(iCatg-1)*nTL+iTL, 'time'] <- tmpDfCatg[, 'time']
                 dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
                 dfCatg[(iCatg-1)*nTL+iTL, 'time_nc'] <- tmpDfCatg[, 'time']
@@ -271,7 +271,7 @@ sumCourtshipSrt <- function(srtfile, listTL=as.integer(c(60000, 120000, 180000, 
     # b$end_miliSec <- b$end_miliSec - TS
     
     # # initialize summary data frame use tool function
-    # # dfCatg <- data.frame(filename = rep(fn, nCatg*nTL), category = rep("", nCatg*nTL), total_time = rep("", nCatg*nTL), time_percent = rep(NA, nCatg*nTL), occurence = rep(NA, nCatg*nTL), stringsAsFactors=FALSE)
+    # # dfCatg <- data.frame(filename = rep(fn, nCatg*nTL), category = rep("", nCatg*nTL), total_time = rep("", nCatg*nTL), time_percent = rep(NA, nCatg*nTL), occurrence = rep(NA, nCatg*nTL), stringsAsFactors=FALSE)
     # dfCatg <- createCourtshipDf(nCatg*nTL)
     
     # # iterate through each time lenght and each category, putting info. one by one
@@ -285,7 +285,7 @@ sumCourtshipSrt <- function(srtfile, listTL=as.integer(c(60000, 120000, 180000, 
     #             dfCatg[(iCatg-1)*nTL+iTL, 'category'] <- tmpDfCatg[, 'category']
     #             dfCatg[(iCatg-1)*nTL+iTL, 'total_time'] <- tmpDfCatg[, 'total_time']
     #             dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
-    #             dfCatg[(iCatg-1)*nTL+iTL, 'occurence'] <- tmpDfCatg[, 'occurence']
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'occurrence'] <- tmpDfCatg[, 'occurrence']
                 
     #             tmpDfCatg <- NULL
     #         }
@@ -328,7 +328,7 @@ sumCourtshipCsv <- function(csvfile, listTL=as.integer(c(60000, 120000, 180000, 
     # b$end_miliSec <- b$end_miliSec - TS
     
     # # initialize summary data frame use tool function
-    # # dfCatg <- data.frame(filename = rep(fn, nCatg*nTL), category = rep("", nCatg*nTL), total_time = rep("", nCatg*nTL), time_percent = rep(NA, nCatg*nTL), occurence = rep(NA, nCatg*nTL), stringsAsFactors=FALSE)
+    # # dfCatg <- data.frame(filename = rep(fn, nCatg*nTL), category = rep("", nCatg*nTL), total_time = rep("", nCatg*nTL), time_percent = rep(NA, nCatg*nTL), occurrence = rep(NA, nCatg*nTL), stringsAsFactors=FALSE)
     # dfCatg <- createCourtshipDf(nCatg*nTL)
     
     # # iterate through each time lenght and each category, putting info. one by one
@@ -342,7 +342,7 @@ sumCourtshipCsv <- function(csvfile, listTL=as.integer(c(60000, 120000, 180000, 
     #             dfCatg[(iCatg-1)*nTL+iTL, 'category'] <- tmpDfCatg[, 'category']
     #             dfCatg[(iCatg-1)*nTL+iTL, 'total_time'] <- tmpDfCatg[, 'total_time']
     #             dfCatg[(iCatg-1)*nTL+iTL, 'time_percent'] <- tmpDfCatg[, 'time_percent']
-    #             dfCatg[(iCatg-1)*nTL+iTL, 'occurence'] <- tmpDfCatg[, 'occurence']
+    #             dfCatg[(iCatg-1)*nTL+iTL, 'occurrence'] <- tmpDfCatg[, 'occurrence']
                 
     #             tmpDfCatg <- NULL
     #         }
@@ -368,7 +368,7 @@ sumCourtshipDir <- function(dir="", readSrt=TRUE, csvDir="", out=TRUE, outfile="
 
     nFile <- length(listFile)
 
-    # preparing Time Length list (a vector of time points) and Category list (a vector of behaviorial tags)
+    # preparing Time Length list (a vector of time points) and Category list (a vector of behavioral tags)
     if(!is.numeric(listTL))
     {
         print("listTL must be an array of integers, indicating mili-seconds.")
@@ -378,7 +378,7 @@ sumCourtshipDir <- function(dir="", readSrt=TRUE, csvDir="", out=TRUE, outfile="
 
     if(!is.character(listCatg))
     {
-        print("listCatg must be an array of strings, indicating behaviorial categories")
+        print("listCatg must be an array of strings, indicating behavioral categories")
         return(NULL)
     }
     nTL= length(listTL)
@@ -399,7 +399,7 @@ sumCourtshipDir <- function(dir="", readSrt=TRUE, csvDir="", out=TRUE, outfile="
     
     # Copy a NA=0 version
     sumCsvNoNA <- sumCsv
-    sumCsvNoNA[is.na(sumCsvNoNA$occurence), 'occurence'] <- 0L
+    sumCsvNoNA[is.na(sumCsvNoNA$occurrence), 'occurrence'] <- 0L
     sumCsvNoNA[is.na(sumCsvNoNA$time), 'time'] <- 0L
     sumCsvNoNA[is.na(sumCsvNoNA$time_percent), 'time_percent'] <- 0L
     sumCsvNoNA[is.na(sumCsvNoNA$time_nc), 'time_nc'] <- 0L
@@ -450,9 +450,9 @@ sumForOneCatg <- function(dfSumCourtship, catg='courtship')
     nTL <- length(listTL)
     
     # initialize data frame for summary, structure as follows
-    # exp_group  total_time  mean_time_percent  sem_time_percent  mean_occurence sem_occurence
+    # exp_group  total_time  mean_time_percent  sem_time_percent  mean_occurrence sem_occurrence
     nRow <- nGroup*nTL
-    sumDf <- data.frame(exp_group=rep("",nRow), total_time=rep("",nRow), mean_time_percent=rep(NA, nRow), sem_time_percent=rep(NA,nRow), mean_occurence=rep(NA,nRow), sem_occurence=rep(NA, nRow), stringsAsFactors=FALSE)
+    sumDf <- data.frame(exp_group=rep("",nRow), total_time=rep("",nRow), mean_time_percent=rep(NA, nRow), sem_time_percent=rep(NA,nRow), mean_occurrence=rep(NA,nRow), sem_occurrence=rep(NA, nRow), stringsAsFactors=FALSE)
     
     # inject the summaries one by one
     for ( iGroup in 1:nGroup )
@@ -468,9 +468,9 @@ sumForOneCatg <- function(dfSumCourtship, catg='courtship')
             sumDf[(iGroup-1)*nTL+iTL, 'mean_time_percent'] <- mean(tmpTimePercent)
             sumDf[(iGroup-1)*nTL+iTL, 'sem_time_percent'] <- sd(tmpTimePercent)/sqrt(sum(!is.na(tmpTimePercent)))
             
-            tmpOccurence <- tmpDfSum$occurence
-            sumDf[(iGroup-1)*nTL+iTL, 'mean_occurence'] <- mean(tmpOccurence)
-            sumDf[(iGroup-1)*nTL+iTL, 'sem_occurence'] <- sd(tmpOccurence)/sqrt(sum(!is.na(tmpOccurence)))
+            tmpOccurence <- tmpDfSum$occurrence
+            sumDf[(iGroup-1)*nTL+iTL, 'mean_occurrence'] <- mean(tmpOccurence)
+            sumDf[(iGroup-1)*nTL+iTL, 'sem_occurrence'] <- sd(tmpOccurence)/sqrt(sum(!is.na(tmpOccurence)))
             
             tmpDfSum <- NULL
             tmpTimePercent <- NULL
@@ -501,9 +501,9 @@ sumCatgForAll <- function(dfSumCourtship)
     nTL <- length(listTL)
     
     # initialize data frame for summary, structure as follows
-    # category  total_time  mean_time_percent  sem_time_percent  mean_occurence sem_occurence
+    # category  total_time  mean_time_percent  sem_time_percent  mean_occurrence sem_occurrence
     nRow <- nCatg*nTL
-    sumDf <- data.frame(category=rep("",nRow), total_time=rep("",nRow), mean_time_percent=rep(NA, nRow), sem_time_percent=rep(NA,nRow), mean_occurence=rep(NA,nRow), sem_occurence=rep(NA,nRow), stringsAsFactors=FALSE)
+    sumDf <- data.frame(category=rep("",nRow), total_time=rep("",nRow), mean_time_percent=rep(NA, nRow), sem_time_percent=rep(NA,nRow), mean_occurrence=rep(NA,nRow), sem_occurrence=rep(NA,nRow), stringsAsFactors=FALSE)
     
     # inject the summaries one by one
     for ( iCatg in 1:nCatg)
@@ -519,9 +519,9 @@ sumCatgForAll <- function(dfSumCourtship)
             sumDf[(iCatg-1)*nTL+iTL, 'mean_time_percent'] <- mean(tmpTimePercent)
             sumDf[(iCatg-1)*nTL+iTL, 'sem_time_percent'] <- sd(tmpTimePercent)/sqrt(sum(!is.na(tmpTimePercent)))
             
-            tmpOccurence <- tmpDfSum$occurence
-            sumDf[(iCatg-1)*nTL+iTL, 'mean_occurence'] <- mean(tmpOccurence)
-            sumDf[(iCatg-1)*nTL+iTL, 'sem_occurence'] <- sd(tmpOccurence)/sqrt(sum(!is.na(tmpOccurence)))
+            tmpOccurence <- tmpDfSum$occurrence
+            sumDf[(iCatg-1)*nTL+iTL, 'mean_occurrence'] <- mean(tmpOccurence)
+            sumDf[(iCatg-1)*nTL+iTL, 'sem_occurrence'] <- sd(tmpOccurence)/sqrt(sum(!is.na(tmpOccurence)))
             
             tmpDfSum <- NULL
             tmpTimePercent <- NULL
@@ -813,7 +813,7 @@ sumCourtshipDir2 <- function(csvDir="", out=TRUE, outfile=paste(csvDir, "/summar
     }
     nFile <- length(listCsv)
 
-    # preparing Time Length list (a vector of time points) and Category list (a vector of behaviorial tags)
+    # preparing Time Length list (a vector of time points) and Category list (a vector of behavioral tags)
     nTL= length(listTL)
     nCatg=length(listCatg)
     
@@ -833,7 +833,7 @@ sumCourtshipDir2 <- function(csvDir="", out=TRUE, outfile=paste(csvDir, "/summar
     # Copy a NA=0 version
     sumCsvNoNA <- sumCsv
     sumCsvNoNA[is.na(sumCsvNoNA$time_percent), 'time_percent'] <- 0L
-    sumCsvNoNA[is.na(sumCsvNoNA$occurence), 'occurence'] <- 0L
+    sumCsvNoNA[is.na(sumCsvNoNA$occurrence), 'occurrence'] <- 0L
     
     # save to files
     if (out)
