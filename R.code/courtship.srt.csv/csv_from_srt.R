@@ -12,7 +12,7 @@ read.srt <- function(file="", encoding="unknown")
         }
     }
     
-    # check filename integrety
+    # check filename integrity
     basefnInput <- basename(file)
     if (grepl("^[.~]", basefnInput) | !grepl("[.]srt$", basefnInput))
     {
