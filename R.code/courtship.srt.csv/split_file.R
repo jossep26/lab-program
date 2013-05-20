@@ -36,14 +36,19 @@ splitCourtshipFile <- function(file, startText="start", preName="", postName="")
         data_pre[data_pre$end_miliSec>split_time, 'end_miliSec'] <- split_time
     }
 
+    data_pre <- data_pre[with(data_pre, order(start_miliSec, end_miliSec)), ]
+
     # get the second part by checking end time
     data_post <- data[data$end_miliSec >= split_time, ]
+    data_post[data_post$text==startText, 'text'] <- "start"
 
     # truncate start time in the second part
     if (sum(data_post$start_miliSec<split_time, na.rm=TRUE)!=0)
     {
         data_post[data_post$start_miliSec<split_time, 'start_miliSec'] <- split_time
     }
+
+    data_post <- data_post[with(data_post, order(start_miliSec, end_miliSec)), ]
 
     dir_in <- dirname(file)
     barefnInput <- sub("[.][^.]*$", "\\1", basename(file), perl=T)
