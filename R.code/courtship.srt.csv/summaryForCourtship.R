@@ -89,10 +89,10 @@ getCourtshipFileList <- function(dir="", readSrt=TRUE)
         listFile <- list.files(path=dir, pattern="[.]srt.csv$", full.names=TRUE)
         if ( identical(listFile, character(0)) ) 
         {
-            listFile <- list.files(path=dir, pattern="[.]srt$", full.names=TRUE)
+            listFile <- list.files(path=dir, pattern="[.]csv$", full.names=TRUE)
             if ( identical(listFile, character(0)) ) 
             {
-                warning("No .srt.csv or .srt files detected.")
+                warning("No .srt.csv or .csv files detected.")
             }
         }
     }
