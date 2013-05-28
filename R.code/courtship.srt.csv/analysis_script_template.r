@@ -1,3 +1,36 @@
+##################
+## 20130528
+
+## bar plot
+source('e:\\experiment\\lab-program\\R.code\\courtship.srt.csv\\summaryForCourtship.R')
+source('e:\\experiment\\lab-program\\R.code\\courtship.srt.csv\\helper01.R')
+source("e:\\experiment\\lab-program\\R.code\\courtship.srt.csv\\csv_from_srt.R")
+library(ggplot2)
+
+
+##courtship
+ua1 <- sumAndUnblindCourtshipDir(csvDir='.', listCatg=c('courtship'), listTL=as.integer(c(300000)), out=FALSE, na.zero=TRUE)
+
+t1 <- summarySE(ua1, measurevar="time_percent", groupvars=c("exp_group","category","total_time"))
+
+t_sub <- t1[(t1$exp_group=="control")|(t1$exp_group=="experimental"),]
+
+pd <- position_dodge(.1)
+
+p1 <- ggplot(t_sub, aes(y=time_percent, x=exp_group)) +
+    geom_errorbar(aes(ymin=time_percent-se, ymax=time_percent+se), position=pd, width=0.6) + 
+      geom_bar() +
+      geom_text(aes(label=paste("n=", N,sep="")), color="white", vjust=1.2) +
+      ylab("Courtship Index") +
+      opts(axis.title.x = theme_blank(), 
+           axis.text.x  = theme_text(angle=60, hjust=1, vjust=1, size=20),
+           axis.title.y = theme_text(angle=90, size=20),
+           axis.text.y  = theme_text(size=16),
+           strip.text.x = theme_text(size=20))
+
+p1
+
+
 ################
 ## 20130403 latency
 
