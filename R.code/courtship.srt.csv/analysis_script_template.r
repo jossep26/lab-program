@@ -1,32 +1,42 @@
 ##################
 ## 20130528
 
-## bar plot
+# bar plot
 source('e:\\experiment\\lab-program\\R.code\\courtship.srt.csv\\summaryForCourtship.R')
 source('e:\\experiment\\lab-program\\R.code\\courtship.srt.csv\\helper01.R')
 source("e:\\experiment\\lab-program\\R.code\\courtship.srt.csv\\csv_from_srt.R")
+source("e:\\experiment\\lab-program\\R.code\\courtship.srt.csv\\rnc_ggplot2_border_themes.r")
 library(ggplot2)
 
+# read in, analyze data
+ua1 <- sumAndUnblindCourtshipDir(csvDir='.', unblindFile="./unblind.csv", listCatg=c('courtship'), listTL=as.integer(c(300000)), out=FALSE, na.zero=TRUE)
 
-##courtship
-ua1 <- sumAndUnblindCourtshipDir(csvDir='.', listCatg=c('courtship'), listTL=as.integer(c(300000)), out=FALSE, na.zero=TRUE)
-
+# prepare plotting data 
 t1 <- summarySE(ua1, measurevar="time_percent", groupvars=c("exp_group","category","total_time"))
 
-t_sub <- t1[(t1$exp_group=="control")|(t1$exp_group=="experimental"),]
+# select a subset of plotting data
+sel <- c("control", "experimental")
+t_sub <- t1[t1$exp_group %in% sel, ]
+gptext <- c("Control", "Experiment")
 
+# plot the bar plot
 pd <- position_dodge(.1)
-
 p1 <- ggplot(t_sub, aes(y=time_percent, x=exp_group)) +
-    geom_errorbar(aes(ymin=time_percent-se, ymax=time_percent+se), position=pd, width=0.6) + 
-      geom_bar() +
+      geom_errorbar(aes(ymin=time_percent-se, ymax=time_percent+se), position=pd, width=0.2) + 
+      geom_bar(stat="identity", width=0.5) +
+      scale_x_discrete("", labels=gptext) +
+      scale_y_continuous("Courtship Index (5 min)", expand=c(0,0), limits=c(0,1)) +
       geom_text(aes(label=paste("n=", N,sep="")), color="white", vjust=1.2) +
-      ylab("Courtship Index") +
-      opts(axis.title.x = theme_blank(), 
-           axis.text.x  = theme_text(angle=60, hjust=1, vjust=1, size=20),
-           axis.title.y = theme_text(angle=90, size=20),
-           axis.text.y  = theme_text(size=16),
-           strip.text.x = theme_text(size=20))
+      theme_bw() +
+      theme(axis.title.x = element_blank(), 
+            axis.text.x  = element_text(angle=0, hjust=0.5, vjust=0.5, size=20, color="black"),
+            axis.title.y = element_text(angle=90, size=20, vjust=0.3),
+            axis.text.y  = element_text(size=16),
+            strip.text.x = element_text(size=20),
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank(),
+            panel.border = element_blank(),
+            axis.line = element_line(color = 'black'))
 
 p1
 
