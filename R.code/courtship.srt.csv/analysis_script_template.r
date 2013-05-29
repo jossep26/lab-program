@@ -11,6 +11,17 @@ library(ggplot2)
 # read in, analyze data
 ua1 <- sumAndUnblindCourtshipDir(csvDir='.', unblindFile="./unblind.csv", listCatg=c('courtship'), listTL=as.integer(c(300000)), out=FALSE, na.zero=TRUE)
 
+# Wilcoxon test
+ctrl_1 <- ua1[ua1$exp_group=='control', 'time_percent']
+exp_1 <- ua1[ua1$exp_group=='experimental', 'time_percent']
+
+test_1 <- wilcox.test(ctrl_1, exp_1)
+pv1 <- test_1$p.value
+
+sink("test_wilcox.txt")
+wilcox.test(ctrl_1, exp_1)
+sink()
+
 # prepare plotting data 
 t1 <- summarySE(ua1, measurevar="time_percent", groupvars=c("exp_group","category","total_time"))
 
