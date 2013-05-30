@@ -589,6 +589,64 @@ readCourtshipLatency <- function(latencyText="latency", dir="", csvDir="", readS
     return(latencyDf)
 }
 
+readFirstCourtshipBout <- function(boutText="courtship bout", dir="", csvDir="", readSrt=TRUE, out=TRUE, outfile="")
+{# readCourtshipBout returns a data frame of first 'courtship bout' intervals of all valid files in a directory.
+    # IMPORTANT: assumes at least 1 'courtship bout' event per file, otherwise produces NA
+
+    # compatibility to older versions
+    if (dir=="")
+    {
+        dir = csvDir
+    }
+
+    listFile <- getCourtshipFileList(dir=dir, readSrt=readSrt)
+
+    if (is.null(listFile))
+        return(NULL)
+
+    nFile <- length(listFile)
+    
+    # prepare output
+    boutDf <- data.frame(filename=rep("", nFile), firstbout=rep(NA, nFile), stringsAsFactors=FALSE)
+    colnames(boutDf)[2] <- boutText
+    
+    # calculate first 'bout' interval, don't terminate when wrong
+    for ( iFile in 1:nFile )
+    {
+        print(paste("Reading", listFile[iFile], "..."))
+        
+        tmpDf <- readCourtshipFile(file=listFile[iFile])
+        tmpDf <- tmpDf[tmpDf$text==boutText, c('start_miliSec', 'end_miliSec')]
+        tmpDf <- tmpDf[with(tmpDf, order('start_miliSec')), ]
+        
+        boutDf[iFile, 'filename'] <- barename(listFile[iFile])
+        
+        if ( (!is.null(tmpDf))&(nrow(tmpDf)>=as.integer(1)) )
+        {
+            boutDf[iFile, boutText] <- tmpDf[1, 'end_miliSec'] - tmpDf[1, 'start_miliSec']
+            print("...done.")
+        }
+        else
+        {
+            print("...wrong!")
+        }
+
+        tmpDf <- NULL
+    }
+    
+    if (out)
+    {
+        if (outfile=="")
+        {
+            outfile <- paste(dir, "/", boutText, ".csv", sep="")
+        }
+        write.csv(format(boutDf, scientific=FALSE), file=outfile, row.names=FALSE)
+        print(paste("Written results to file", outfile))
+    }
+    
+    return(boutDf)
+}
+
 unblindCourtshipCsv <- function(summaryCsv="", unblindCsv="")
 {# This will translate filename into experiment categories for existing summary csv file
 
@@ -621,6 +679,42 @@ unblindCourtshipCsv <- function(summaryCsv="", unblindCsv="")
     unblind_data <- merge(sumDf, unblind, by='filename')
     if ('total_time' %in% colnames(unblind_data) )
     {# there must be a reason for this, but i have forgotten
+        unblind_data <- transform(unblind_data, total_time = as.character(as.integer(total_time)))
+    }
+    #unblind_data <- transform(unblind_data, total_time = as.character(total_time))
+    
+    return(unblind_data)
+}
+
+unblindCourtshipDf <- function(data, unblind="")
+{# This will translate filename into experiment categories for existing summary csv file
+
+    #
+    if (is.null(data))
+    {
+        print("Invalid input data frame!")
+        return()
+    }
+
+    # initializing file selection
+    if (unblind=="")
+    {
+        unblind <- choose.files(caption="Select UNBLIND csv file")
+        if ( identical(unblind, character(0)) ) 
+        {
+            print("File selection has been canceled.")
+            return(NULL)
+        }
+    }
+    
+    sumDf <- data
+    sumDf <- transform(sumDf, filename = barename(filename))
+    unblind <- read.csv(file=unblind, stringsAsFactors=F)
+    unblind <- transform(unblind, filename = barename(filename))
+    
+    unblind_data <- merge(sumDf, unblind, by='filename')
+    if ('total_time' %in% colnames(unblind_data) )
+    {# there must be a reason for this, but i have forgotten :(
         unblind_data <- transform(unblind_data, total_time = as.character(as.integer(total_time)))
     }
     #unblind_data <- transform(unblind_data, total_time = as.character(total_time))
