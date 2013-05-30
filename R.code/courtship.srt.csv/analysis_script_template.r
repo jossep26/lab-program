@@ -68,7 +68,7 @@ p2 <- ggplot(t_sub2, aes(y=latency, x=exp_group)) +
       geom_errorbar(aes(ymin=latency-se, ymax=latency+se), position=pd, width=0.2) + 
       geom_bar(stat="identity", width=0.5) +
       scale_x_discrete("", labels=gptext) +
-      scale_y_continuous("Latency", expand=c(0,0)) +
+      scale_y_continuous("Latency", expand=c(0,0), limits=c(0,350000), breaks=c(50000*(1:7)), labels=c(50*(1:7))) +
       geom_text(aes(label=paste("n=", N,sep="")), color="white", vjust=1.2) +
       theme_bw() +
       theme(axis.title.x = element_blank(), 
