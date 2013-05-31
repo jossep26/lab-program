@@ -607,8 +607,8 @@ readFirstCourtshipBout <- function(boutText="courtship bout", dir="", csvDir="",
     nFile <- length(listFile)
     
     # prepare output
-    boutDf <- data.frame(filename=rep("", nFile), firstbout=rep(NA, nFile), stringsAsFactors=FALSE)
-    colnames(boutDf)[2] <- boutText
+    boutDf <- data.frame(filename=rep("", nFile), duration=rep(NA, nFile), stringsAsFactors=FALSE)
+    # colnames(boutDf)[2] <- boutText
     
     # calculate first 'bout' interval, don't terminate when wrong
     for ( iFile in 1:nFile )
@@ -623,7 +623,7 @@ readFirstCourtshipBout <- function(boutText="courtship bout", dir="", csvDir="",
         
         if ( (!is.null(tmpDf))&(nrow(tmpDf)>=as.integer(1)) )
         {
-            boutDf[iFile, boutText] <- tmpDf[1, 'end_miliSec'] - tmpDf[1, 'start_miliSec']
+            boutDf[iFile, 'duration'] <- tmpDf[1, 'end_miliSec'] - tmpDf[1, 'start_miliSec']
             print("...done.")
         }
         else
@@ -709,10 +709,11 @@ unblindCourtshipDf <- function(data, unblind="")
     
     sumDf <- data
     sumDf <- transform(sumDf, filename = barename(filename))
-    unblind <- read.csv(file=unblind, stringsAsFactors=F)
-    unblind <- transform(unblind, filename = barename(filename))
+    ubDf <- read.csv(file=unblind, stringsAsFactors=F)
+    ubDf <- transform(ubDf, filename = barename(filename))
     
-    unblind_data <- merge(sumDf, unblind, by='filename')
+    unblind_data <- merge(sumDf, ubDf, by='filename')
+
     if ('total_time' %in% colnames(unblind_data) )
     {# there must be a reason for this, but i have forgotten :(
         unblind_data <- transform(unblind_data, total_time = as.character(as.integer(total_time)))
