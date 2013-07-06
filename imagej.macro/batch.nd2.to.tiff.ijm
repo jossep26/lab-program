@@ -55,6 +55,38 @@ function convertBioFormatTo8BitTif(inFullname, outFullname)
   close();
 }
 
+function bfImport(path,channels,zs,times)
+{
+// From dvSplitTimePoints.txt
+// Originally written by Sebastien Huart
+
+//  Example:
+//    coptions=newArray(2,2,1); // the second channel, (start from 0)
+//    toptions=newArray(5,5,1); // the 5th time slice, (start from 1)
+//    zoptions=newArray(1,20,1); // from 1st to 20th z plane, every plane (step is 1)
+//    srcId=bfImport(path,coptions,zoptions,toptions);
+
+  run("Bio-Formats Macro Extensions");
+//  bfDimOrders=newArray("XYZCT","XYZTC","XYCZT","XYCTZ","XYTZC","XYTCZ");
+  dimOrder="";
+  Ext.getDimensionOrder(dimOrder);
+  Ext.getSizeT(numT);
+  Ext.getSizeZ(numZ);
+  Ext.getSizeC(numC);
+  print(dimOrder+" numT="+numT);
+  
+  options="open=["+path+
+    "] view=[Standard ImageJ] stack_order="+dimOrder+" specify_ranges ";
+  cOpts="c_begin="+ channels[0]+ " c_end="+channels[1]+" c_step="+channels[2];
+  zOpts="z_begin="+zs[0]+" z_end="+zs[1]+" z_step="+zs[2];
+  tOpts="t_begin="+times[0]+" t_end="+times[1]+" t_step="+times[2];
+  options=options+cOpts+" "+zOpts+" "+tOpts;
+  
+  run("Bio-Formats Importer", options);
+  id=getImageID();
+  return id;
+}
+
 function getFromFileList(ext, fileList)
 {
   // Select from fileList array the filenames with specified extension
