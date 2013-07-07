@@ -130,3 +130,14 @@ function getExtension(filename)
   ext = substring( filename, lastIndexOf(filename, ".") + 1 );
   return ext;
 }
+
+function barename(filename)
+{// Strip directory path and extension(from the first period) in filename
+    fn = File.getName(filename);
+    return substring(fn, 0, indexOf(fn, "."));
+}
+
+function slugify(string)
+{// Replace none-word character into underscore
+    return replace(string, "\\W+", "_");
+}
