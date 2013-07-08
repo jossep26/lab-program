@@ -1,7 +1,9 @@
-// --- Main procedures begin ---
+// Batch register nd2 files, output tiff
+
+// --- Main procedures begin ---
 
 ext ="nd2";
-inDir = getDirectory("--> INPUT: Choose Directory Containing " + ext + "Files <--");
+inDir = getDirectory("--> INPUT: Choose Directory Containing " + ext + " Files <--");
 outDir = getDirectory("--> OUTPUT: Choose Directory for TIFF Output <--");
 inList = getFileList(inDir);
 list = getFromFileList(ext, inList);
