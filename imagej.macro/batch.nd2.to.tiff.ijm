@@ -28,10 +28,11 @@ setBatchMode(true);
 for (i=0; i<list.length; i++) 
 {
   inFullname = inDir + list[i];
-  outFullname = outDir + list[i] + ".tif";
-  print("Converting",list[i]); // Checkpoint: Indicating progress
+  //outFullname = outDir + list[i] + ".tif";
+  print("Converting", i+1, "of", list.length, list[i]); // Checkpoint: Indicating progress
   
-  convertBioFormatToTif(inFullname, outFullname); // Implemented below
+  //convertBioFormatToTif(inFullname, outFullname); // Implemented below
+  splitBioFormatToTif(inFullname, outDir);
 
   print("...done."); //Checkpoint: Done one.
 }
@@ -55,6 +56,34 @@ function convertBioFormatTo8BitTif(inFullname, outFullname)
   close();
 }
 
+function splitBioFormatToTif(inFullname, outDir)
+{
+    run("Bio-Formats Macro Extensions");
+    Ext.setId(inFullname);
+    Ext.getSizeT(numT);
+    Ext.getSizeC(numC);
+    Ext.getSizeZ(numZ);
+    
+    for (c = 0; c < numC; c++)
+    {
+        coptions = newArray(c, c, 1);
+        toptions = newArray(1, numT, 1);
+        zoptions = newArray(1, numZ, 1);
+
+        outName = "" + slugify(barename(inFullname)) + "_C_" + toString(c);
+        if (numC <= 1)
+        {
+            outName = "" + slugify(barename(inFullname));
+        }
+        outFullname = "" + trimDirTail(outDir) + "\\" + outName + ".tif";
+
+        id = bfImport(inFullname, coptions, zoptions, toptions);
+        //selectImage(id);
+        saveAs("Tiff", outFullname);
+        close();
+    }
+}
+
 function bfImport(path,channels,zs,times)
 {
 // Import image from "path", in specified ranges. Return the image ID.
@@ -75,19 +104,19 @@ function bfImport(path,channels,zs,times)
   Ext.getSizeT(numT);
   Ext.getSizeZ(numZ);
   Ext.getSizeC(numC);
-  print("Image " + path + " has: "); 
-  print(numC + " channel(s), " + 
-        numZ + " z plane(s), " + 
-        numT + " time point(s)." );
+//  print("Image " + path + " has: "); 
+//  print(numC + " channel(s), " + 
+//        numZ + " z plane(s), " + 
+//        numT + " time point(s)." );
   
-  options = "open=[" + path + "] view=[Standard ImageJ] stack_order=" + dimOrder + " specify_range ";
+  options = "open=[" + path + "] view=[Standard ImageJ] stack_order=" + dimOrder + " virtual specify_range ";
   cOpts = "c_begin=" + channels[0] + " c_end=" + channels[1] + " c_step=" + channels[2];
   zOpts = "z_begin=" + zs[0]       + " z_end=" + zs[1]       + " z_step=" + zs[2];
   tOpts = "t_begin=" + times[0]    + " t_end=" + times[1]    + " t_step=" + times[2];
   options = options + cOpts + " " + zOpts + " " + tOpts;
   
   run("Bio-Formats Importer", options);
-  id=getImageID();
+  id = getImageID();
   return id;
 }
 
@@ -140,4 +169,9 @@ function barename(filename)
 function slugify(string)
 {// Replace none-word character into underscore
     return replace(string, "\\W+", "_");
+}
+
+function trimDirTail(dir)
+{// Trim any tailing backslash
+    return replace(dir, "\\\\+$", "");
 }
