@@ -22,6 +22,7 @@ sink("test_wilcox.txt")
 wilcox.test(ctrl_1, exp_1)
 sink()
 
+
 # prepare plotting data 
 t1 <- summarySE(ua1, measurevar="time_percent", groupvars=c("exp_group","category","total_time"))
 
@@ -51,41 +52,6 @@ p1 <- ggplot(t_sub, aes(y=time_percent, x=exp_group)) +
 
 p1
 
-
-##latency
-ul <- readAndUnblindCourtshipLatency(csvDir='.', unblind='./unblind.csv', latencyText="latency", no.na=T, na.to=0L)
-
-t3 <- summarySE(ul, measurevar="latency", groupvar=c("exp_group"))
-
-# select a subset of plotting data
-sel2 <- c("control", "experimental")
-t_sub2 <- t3[t3$exp_group %in% sel2, ]
-gptext <- c("Control", "Experiment")
-
-# plot the bar plot
-pd <- position_dodge(.1)
-p2 <- ggplot(t_sub2, aes(y=latency, x=exp_group)) +
-      geom_errorbar(aes(ymin=latency-se, ymax=latency+se), position=pd, width=0.2) + 
-      geom_bar(stat="identity", width=0.5) +
-      scale_x_discrete("", labels=gptext) +
-      scale_y_continuous("Latency", expand=c(0,0), limits=c(0,350000), breaks=c(50000*(1:7)), labels=c(50*(1:7))) +
-      geom_text(aes(label=paste("n=", N,sep="")), color="white", vjust=1.2) +
-      theme_bw() +
-      theme(axis.title.x = element_blank(), 
-            axis.text.x  = element_text(angle=0, hjust=0.5, vjust=0.5, size=20, color="black"),
-            axis.title.y = element_text(angle=90, size=20, vjust=0.3),
-            axis.text.y  = element_text(size=16),
-            strip.text.x = element_text(size=20),
-            panel.grid.major = element_blank(), 
-            panel.grid.minor = element_blank(),
-            panel.border = element_blank(),
-            axis.line = element_line(color = 'black'))
-
-p2
-
-pdf("Latency.pdf", width=4, height=6)
-p2
-dev.off()
 
 ################
 ## 20130403 latency
@@ -143,6 +109,37 @@ sel2 <- c("uas_tnte/+;th_gal4/+",
         "uas_tnte/+", 
         "th_gal4/+")
  
+# wilcox test
+ua1_test <- NULL
+for (i in 1:length(sel2))
+{
+    ua1_test[[i]] <- ua1[(ua1$genotype==sel2[i])&(ua1$total_time==300000), c("latency")]
+}
+
+ua1_wilcox2 <- data.frame()
+nn <- 1
+for (i in 1:(length(sel2)-1))
+{
+    for (j in (i+1):length(sel2))
+    {
+        t <- wilcox.test(ua1_test[[i]], ua1_test[[j]])
+
+        ua1_wilcox2[nn, "i"] <- sel2[i]
+        ua1_wilcox2[nn, "j"] <- sel2[j]
+        ua1_wilcox2[nn, "p"] <- t$p.value
+
+        nn <- nn + 1
+
+        print(paste("i: ", sel2[i], " vs. j: ", sel2[j], ": wilcox test:", sep=""))
+        print(t)
+        print("---------------")
+        # print(paste("i = ", i, ", j= ", j, ",length = ", length(sel2), sep=""))
+    }
+}
+
+ua1_wilcox2
+
+# plot
 t34 <- t3[t3$genotype %in% sel2,]
 t34$latency <- t34$latency/1000
 t34$sd <- t34$sd/1000
