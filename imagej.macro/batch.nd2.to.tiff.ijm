@@ -64,7 +64,7 @@ function splitBioFormatToTif(inFullname, outDir)
     Ext.getSizeC(numC);
     Ext.getSizeZ(numZ);
     
-    for (c = 0; c < numC; c++)
+    for (c = 1; c <= numC; c++)
     {
         coptions = newArray(c, c, 1);
         toptions = newArray(1, numT, 1);
