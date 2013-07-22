@@ -818,22 +818,30 @@ readAndUnblindCourtshipLatency <- function(dir="", readSrt=TRUE, csvDir="", unbl
     print("...added.")
     
     if (no.na && is.numeric(na.to) && (length(na.to)==1) )
-    {
+    {# TODO: refactor converting NAs to a separate function
         print("Converting NAs...")
         noNA <- unblind_data
-        noNA[is.na(noNA[colnames(noNA)==latencyText]), latencyText] <- na.to
-        print(paste("...all NAs are now converted to", na.to))
-        
-        if (!out)
+
+        naIds <- is.na(noNA[colnames(noNA)==latencyText])
+        if (nrow(naIds) == 0)
         {
-            return(noNA)
+            print("...No NA detected.")
         }
         else
+        {
+            noNA[naIds, latencyText] <- na.to
+            print(paste("...all NAs are now converted to", na.to))
+        
+        }
+
+        if (out)
         {
             noNAfile <- paste(dir, "/unblinded_", latencyText, "noNA.csv", sep="")
             write.csv(format(noNA, scientific=FALSE), file=noNAfile, row.names=FALSE)
             print(paste("Results written to file", noNAfile))            
         }
+
+        return(noNA)
         
     }
     else
@@ -844,9 +852,10 @@ readAndUnblindCourtshipLatency <- function(dir="", readSrt=TRUE, csvDir="", unbl
             write.csv(format(unblind_data, scientific=FALSE), file=outfile, row.names=FALSE)
             print(paste("Results written to file", outfile))
         }
+
+        return(unblind_data)
     }
     
-    return(unblind_data)
 }
 
 ###### non-cumulative time_percent #####
