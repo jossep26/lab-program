@@ -823,7 +823,7 @@ readAndUnblindCourtshipLatency <- function(dir="", readSrt=TRUE, csvDir="", unbl
         noNA <- unblind_data
 
         naIds <- is.na(noNA[colnames(noNA)==latencyText])
-        if (nrow(naIds) == 0)
+        if (nrow(naIds) == 0L)
         {
             print("...No NA detected.")
         }
@@ -855,7 +855,9 @@ readAndUnblindCourtshipLatency <- function(dir="", readSrt=TRUE, csvDir="", unbl
 
         return(unblind_data)
     }
-    
+
+    return(unblind_data)
+
 }
 
 ###### non-cumulative time_percent #####
