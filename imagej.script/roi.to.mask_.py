@@ -6,6 +6,9 @@ from ij.plugin.frame import RoiManager
 import os
 
 # this script requires that Roi Manager be closed !
+#
+# convert ROI file (*.roi, *.zip for .roi collection) 
+# to mask image(s), 0 as 
 
 odroi = OpenDialog("Choose a ROI file", None)
 roifn = odroi.getFileName()
