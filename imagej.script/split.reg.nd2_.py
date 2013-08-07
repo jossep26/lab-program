@@ -2,6 +2,7 @@ from ij import IJ, ImagePlus, ImageStack
 from ij.process import ImageProcessor
 from ij.process import FloatProcessor  
 from ij.io import OpenDialog
+from ij.gui import GenericDialog
 from ij.plugin import ChannelSplitter
 from ij.gui import ImageWindow
 from ij.io import FileSaver
@@ -11,6 +12,24 @@ from loci.plugins import BF
 
 import TurboReg_
 
+def getRefIdDialog():  
+  gd = GenericDialog("Reference Image")
+  gd.addMessage("Specify image for reference")
+  gd.addNumericField("Channel (C):", 2, 0)
+  gd.addNumericField("Slice (Z):", 1, 0)
+  gd.addNumericField("Frame (T):", 1, 0)
+  gd.addMessage("Note: All fields start with 1 (not 0)")
+  gd.showDialog()
+  #  
+  if gd.wasCanceled():
+    print "User canceled dialog!"  
+    return  
+  # Read out the options  
+  c = int(gd.getNextNumber())
+  z = int(gd.getNextNumber())
+  t = int(gd.getNextNumber())
+  refId = [c,z,t]
+  return refId
 
 def regBf(fn=None, imp=None, refId=None):
     """ 
@@ -218,6 +237,8 @@ if outDir is None:
     print "Output to same dir as source."
     ourtDir = srcDir
 
+refImageId = getRefIdDialog()
+
 for root, directories, filenames in os.walk(srcDir):
     for filename in filenames:
         # Skip non-ND2 files
@@ -232,7 +253,7 @@ for root, directories, filenames in os.walk(srcDir):
         #     continue
 
         print "Registering ", filename
-        imp = regBf(fn=inpath, refId=[2,1,1])
+        imp = regBf(fn=inpath, refId=refImageId)
         if imp is None:
             print "Skipped, wrong with registration: ", filename
             continue
