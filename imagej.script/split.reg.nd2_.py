@@ -243,7 +243,7 @@ for root, directories, filenames in os.walk(srcDir):
             # print "Registered and saved to ", outfn
             splittedimps = ChannelSplitter.split(imp)
             for i, simp in enumerate(splittedimps):
-                outfn = "reg_" + os.path.splitext(filename)[0] + "_C_" + i + ".tif"
+                outfn = "reg_" + os.path.splitext(filename)[0] + "_C_" + str(i) + ".tif"
                 outpath = os.path.join(outDir, outfn)
                 if os.path.exists(outpath):
                     print "Skipped, already exists: ", outfn
