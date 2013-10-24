@@ -1,4 +1,8 @@
 function data = imageDfToF(inputFullname, outputFullname, baseRange)
+%   Will calculate delta F to F zero for a stack of images, pixel by pixel.
+%   inputFullname points to an image stack which can be read by 'load1p'. 
+%   outpuuFullname is a filename with full path.
+%   baseRange specifies indexes for calculation of F zero, e.g. (1:40) for first 40 slices.
 
 imageData = load1p(inputFullname);
 nImages = size(imageData,3);
