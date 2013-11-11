@@ -14,7 +14,7 @@ import TurboReg_
 
 def getRefIdDialog():  
   gd = GenericDialog("Reference Image")
-  gd.addMessage("Specify image for reference")
+  gd.addMessage("Preparing Turboreg Rigidbody\nSpecify image for reference")
   gd.addNumericField("Channel (C):", 2, 0)
   gd.addNumericField("Slice (Z):", 1, 0)
   gd.addNumericField("Frame (T):", 1, 0)
@@ -23,7 +23,7 @@ def getRefIdDialog():
   #  
   if gd.wasCanceled():
     print "User canceled dialog!"  
-    return  
+    return
   # Read out the options  
   c = int(gd.getNextNumber())
   z = int(gd.getNextNumber())
@@ -226,50 +226,56 @@ def regBf(fn=None, imp=None, refId=None):
 
 
 # batch reg nd2 in dir
+def run():
+  srcDir = DirectoryChooser("Chose Source Dir").getDirectory()
+  if srcDir is None:
+      print "Canceled!"
+      return
 
-srcDir = DirectoryChooser("Chose Source Dir").getDirectory()
-if srcDir is None:
-    print "Canceled"
-    exit(1)
+  outDir = DirectoryChooser("Chose >Output< Dir").getDirectory()
+  if outDir is None:
+      print "Output to same dir as source."
+      ourtDir = srcDir
 
-outDir = DirectoryChooser("Chose >Output< Dir").getDirectory()
-if outDir is None:
-    print "Output to same dir as source."
-    ourtDir = srcDir
+  refImageId = getRefIdDialog()
+  if refImageId is None:
+      print "Canceled!"
+      return
 
-refImageId = getRefIdDialog()
+  for root, directories, filenames in os.walk(srcDir):
+      for filename in filenames:
+          # Skip non-ND2 files
+          if not filename.endswith(".nd2"):
+              continue
+          inpath = os.path.join(root, filename)
 
-for root, directories, filenames in os.walk(srcDir):
-    for filename in filenames:
-        # Skip non-ND2 files
-        if not filename.endswith(".nd2"):
-            continue
-        inpath = os.path.join(root, filename)
+          # outfn = "reg_" + os.path.splitext(filename)[0] + ".tif"
+          # outpath = os.path.join(outDir, outfn)
+          # if os.path.exists(outpath):
+          #     print "Skipped, already exists: ", outfn
+          #     continue
 
-        # outfn = "reg_" + os.path.splitext(filename)[0] + ".tif"
-        # outpath = os.path.join(outDir, outfn)
-        # if os.path.exists(outpath):
-        #     print "Skipped, already exists: ", outfn
-        #     continue
+          print "Registering ", filename
+          imp = regBf(fn=inpath, refId=refImageId)
+          if imp is None:
+              print "Skipped, wrong with registration: ", filename
+              continue
+          else:
+              # fs = FileSaver(imp)
+              # fs.saveAsTiffStack(outpath)
+              # IJ.saveAsTiff(imp, outpath)
+              # print "Registered and saved to ", outfn
+              splittedimps = ChannelSplitter.split(imp)
+              for i, simp in enumerate(splittedimps):
+                  outfn = "reg_" + os.path.splitext(filename)[0] + "_C_" + str(i) + ".tif"
+                  outpath = os.path.join(outDir, outfn)
+                  if os.path.exists(outpath):
+                      print "Skipped, already exists: ", outfn
+                      continue
+                  IJ.saveAsTiff(simp, outpath)
+                  print "Registered and saved to ", outfn
 
-        print "Registering ", filename
-        imp = regBf(fn=inpath, refId=refImageId)
-        if imp is None:
-            print "Skipped, wrong with registration: ", filename
-            continue
-        else:
-            # fs = FileSaver(imp)
-            # fs.saveAsTiffStack(outpath)
-            # IJ.saveAsTiff(imp, outpath)
-            # print "Registered and saved to ", outfn
-            splittedimps = ChannelSplitter.split(imp)
-            for i, simp in enumerate(splittedimps):
-                outfn = "reg_" + os.path.splitext(filename)[0] + "_C_" + str(i) + ".tif"
-                outpath = os.path.join(outDir, outfn)
-                if os.path.exists(outpath):
-                    print "Skipped, already exists: ", outfn
-                    continue
-                IJ.saveAsTiff(simp, outpath)
-                print "Registered and saved to ", outfn
+  print "done."
 
-print "done."
+# finnaly, run
+run()
