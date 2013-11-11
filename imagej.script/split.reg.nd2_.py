@@ -14,7 +14,7 @@ import TurboReg_
 
 def getRefIdDialog():  
   gd = GenericDialog("Reference Image")
-  gd.addMessage("Preparing Turboreg Rigidbody\nSpecify image for reference")
+  gd.addMessage("Preparing Turboreg(Rigidbody)\nSpecify image for reference")
   gd.addNumericField("Channel (C):", 2, 0)
   gd.addNumericField("Slice (Z):", 1, 0)
   gd.addNumericField("Frame (T):", 1, 0)
@@ -229,17 +229,17 @@ def regBf(fn=None, imp=None, refId=None):
 def run():
   srcDir = DirectoryChooser("Chose Source Dir").getDirectory()
   if srcDir is None:
-      print "Canceled!"
+      IJ.log("Choose Dir Canceled!")
       return
 
   outDir = DirectoryChooser("Chose >Output< Dir").getDirectory()
   if outDir is None:
-      print "Output to same dir as source."
+      IJ.log("Output to same dir as source.")
       ourtDir = srcDir
 
   refImageId = getRefIdDialog()
   if refImageId is None:
-      print "Canceled!"
+      IJ.log("Select Reference Image Canceled!")
       return
 
   for root, directories, filenames in os.walk(srcDir):
@@ -255,10 +255,10 @@ def run():
           #     print "Skipped, already exists: ", outfn
           #     continue
 
-          print "Registering ", filename
+          IJ.log("Registering\n" + filename)
           imp = regBf(fn=inpath, refId=refImageId)
           if imp is None:
-              print "Skipped, wrong with registration: ", filename
+              IJ.log("Skipped, wrong with registration:\n" + filename)
               continue
           else:
               # fs = FileSaver(imp)
@@ -270,12 +270,12 @@ def run():
                   outfn = "reg_" + os.path.splitext(filename)[0] + "_C_" + str(i) + ".tif"
                   outpath = os.path.join(outDir, outfn)
                   if os.path.exists(outpath):
-                      print "Skipped, already exists: ", outfn
+                      IJ.log("Skipped saving, file already exists:\n" + outfn)
                       continue
                   IJ.saveAsTiff(simp, outpath)
-                  print "Registered and saved to ", outfn
+                  IJ.log("Registered and saved to\n" + outfn)
 
-  print "done."
+  IJ.log("done!")
 
 # finnaly, run
 run()
