@@ -4,7 +4,7 @@
 from ini.trakem2.display import AreaList, Display, AreaTree, Connector
 import csv
 
-header = ['type', 'parentId', 'node_degree', 'layer','parentName', 'shortMeaningfulTitle', 'node', 'tag']
+header = ['type', 'parentId', 'nodeDegree', 'layer','parentName', 'shortMeaningfulTitle', 'node', 'tag']
 foundtags = [header]
 
 areatrees = Display.getFront().getLayerSet().getZDisplayables(AreaTree)
