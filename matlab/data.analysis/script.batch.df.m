@@ -1,7 +1,7 @@
 clear;
 indir = pwd;
 outdir = indir;
-baseRange = (1:40);
+baseRange = (20:50);
 fileList = dir(fullfile (indir, '/*.tif'));
 nFile = length(fileList);
 for i = 1:nFile
