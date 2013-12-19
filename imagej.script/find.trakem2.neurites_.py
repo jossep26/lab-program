@@ -8,7 +8,7 @@ from fiji.geom import AreaCalculations
 import csv
 from jarray import array
 
-header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs', 'connectors']
+header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs', 'input', 'output']
 foundNeuriteNodes = [header]
 
 # recursive function to assign nodes with 'branch id' to mark different linear segments
@@ -44,6 +44,7 @@ for neurite in neurites:
         layerset = areatree.getLayerSet()
         calibration = layerset.getCalibration()
         affine = areatree.getAffineTransform()
+        # outAndInArray = areatree.findConnectors()
         for nd in root.getSubtreeNodes():
             # get node coordinates, from tut on web
             fp = array([nd.getX(), nd.getY()], 'f')
@@ -54,23 +55,24 @@ for neurite in neurites:
 
             # get node connections, in/out synapse number, synapse id
             # NOTE: this method seems to be affected by display zoom value
-            inAndOuts = layerset.findZDisplayables(Connector, nd.getLayer(), int(fp[0]), int(fp[1]), False)
-            nInputs = 0
-            nOutputs = 0
+            area = nd.getArea()
+            area.transform(affine)
+            inAndOuts = layerset.findZDisplayables(Connector, nd.getLayer(), area, False, False)
+            outgoing = []
+            incoming = []
             for connector in inAndOuts:
                 if connector is None:
                     break
-                originTrees = []
-                for t in connector.getOrigins(Tree):
-                    originTrees.append(t)
-                targetTrees = []
-                for tSet in connector.getTargets(Tree):
-                    for t in tSet:
-                        targetTrees.append(t)
-                if areatree in originTrees:
-                    nOutputs += 1
-                if areatree in targetTrees:
-                    nInputs += 1
+                if connector.intersectsOrigin(area, nd.getLayer()):
+                    outgoing.append(connector)
+                else:
+                    incoming.append(connector)
+            nInputs = len(incoming)
+            nOutputs = len(outgoing)
+            outgoingIds = [x.getId() for x in outgoing]
+            incomingIds = [x.getId() for x in incoming]
+
+            # get node connections, out/in synapse number, synapse id
 
             # get branch id
             if branchTable.has_key(nd):
@@ -83,8 +85,8 @@ for neurite in neurites:
 
             ndLayerIndex = nd.getLayer().getParent().indexOf(nd.getLayer()) + 1
             # save a line of node profile data
-            # ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs', 'connectors']
-            nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), branch, ndLayerIndex, x, y, z, ndArea, nInputs, nOutputs, inAndOuts]
+            # ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs', 'input', 'output']
+            nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), branch, ndLayerIndex, x, y, z, ndArea, nInputs, nOutputs, incomingIds, outgoingIds]
             foundNeuriteNodes.append(nodeData)
 
 outfile = open('neurites.csv','wb')
