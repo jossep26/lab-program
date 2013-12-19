@@ -108,7 +108,7 @@ def voteStatistician(rootA, rootB, voter, tagError = 1) :
             if len(votingTagB) is not 1:
                 # voting wrong, probably missing
                 r = SubElement(nodeA, 't2_tag', {'name' : "REVOTE-" + voter, 'key' : "R"})
-                print getObjId(matchedNodeB), "vote tag wrong."
+                print getObjId(matchedNodeB), "vote tag wrong, revote."
                 continue
             else :
                 # print getObjId(matchedNodeB) , "vote accepted."
