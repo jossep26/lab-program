@@ -74,44 +74,33 @@ def markTreeSegmentClean(node):
     return cpList
 
 def markTreeSegment2(root):
-    cutNodes = [root]
-    branchNodes = set([nd for nd in root.getBranchNodes()])
-    isRootCut = bool(0)
+    cutNodes = []
     for nd in root.getSubtreeNodes():
         tags = nd.getTags()
         if tags is None:
             continue
         for tag in tags:
             if 'output_' in tag.toString():
-                if root.getId() == nd.getId():
-                    isRootCut = bool(1)
-                else:
-                    cutNodes.append(nd)
+                cutNodes.append(nd)
                 break
     cutNodes = set(cutNodes)
+    branchNodes = set([nd for nd in root.getBranchNodes()])
     branchCutNodes = branchNodes.intersection(cutNodes)
     markings = {}
     segId = 0
-
+    for nd in root.getSubtreeNodes():
+        markings[nd] = set([segId])
+    segId += 1
     for cnd in cutNodes:
         if cnd in branchNodes:
-            if cnd in markings:
-                markings[cnd].add(segId)
-            else:
-                markings[cnd] = set([segId])
+            markings[cnd].add(segId)
             for chnd in cnd.getChildrenNodes():
                 segId += 1
                 for nd in chnd.getSubtreeNodes():
-                    if nd in markings:
-                        markings[nd].add(segId)
-                    else:
-                        markings[nd] = set([segId])
+                    markings[nd].add(segId)
         else:
             for nd in cnd.getSubtreeNodes():
-                if nd in markings:
-                    markings[nd].add(segId)
-                else:
-                    markings[nd] = set([segId])
+                markings[nd].add(segId)
             segId += 1
 
     markings.update((k, frozenset(v)) for k, v in markings.iteritems())
