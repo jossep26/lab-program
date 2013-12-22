@@ -1,79 +1,22 @@
 from ini.trakem2.display import Tag
 from  java.awt.event import KeyEvent
 
-
-def markTreeSegment(node):
-    global segmentId
-    global segmentList
-
-    segmentId = 0
-    segmentList = []
-
-    print 'node', node.getId(), 'segment', segmentId
-    node.addTag(Tag(str(segmentId), KeyEvent.VK_K))
-    segmentList.append([node, segmentId])
-
-    canBeCut = 0
-    tags = node.getTags()
-    if tags is not None:
-        for tag in tags:
-            if 'output_' in tag.toString():
-                canBeCut = 1
-                break
-    if canBeCut:
-        segmentId += 1
-        print 'node', node.getId(), 'segment', segmentId
-        node.addTag(Tag(str(segmentId), KeyEvent.VK_K))
-        segmentList.append([node, segmentId])
-
-    # go to next node
-    count = node.getChildrenCount()
-    if 0 == count:
-        print 'this node is end'
-        return
-    elif 1 == count:
-        nextNode = node.getChildrenNodes()[0]
-        # print 'next', nextNode.getId()
-        markTreeSegment(nextNode)
-    else:
-        print 'this is branch'
-        for nextNode in node.getChildrenNodes():
-            segmentId += 1
-            print 'node', node.getId(), 'segment', segmentId
-            node.addTag(Tag(str(segmentId), KeyEvent.VK_K))
-            segmentList.append([node, segmentId])
-            markTreeSegment(nextNode)
-
-
-def markTreeSegmentClean(node):
-    global segmentId
-    global segmentList
-
-    segmentId = 0
-    segmentList = []
-    markTreeSegment(node)
-    cpList = segmentList
-
-    keyNodes = []
-    for bnd in node.getBranchNodes(node):
-        tags = bnd.getTags()
+def getInputs(nodeSet):
+    nInputs = 0
+    for nd in nodeSet:
+        tags = nd.getTags()
         if tags is None:
-            keyNodes.append(bnd)
             continue
         for tag in tags:
-            if 'output_' not in tag.toString():
-                keyNodes.append(bnd)
+            if 'input_' in tag.toString():
+                posN = tag.toString().find('_')
+                nIn = int(tag.toString()[posN+1 :])
+                nInputs += nIn
+    return nInputs
 
-    markings = dict()
-    for nd, sid in cpList:
-        if nd in markings:
-            markings[nd].append(sid)
-        else:
-            markings[nd] = [sid]
 
-    return cpList
 
-def markTreeSegment2(root):
+def markTreeSegment(root):
     cutNodes = []
     for nd in root.getSubtreeNodes():
         tags = nd.getTags()
@@ -152,7 +95,7 @@ for neurite in neurites:
         areatrees = neurite.findChildrenOfTypeR("areatree")
         for areatree in areatrees:
             root = areatree.getObject().getRoot()
-            markings = markTreeSegment2(root)
+            markings = markTreeSegment(root)
 
             print markings
             for i, nds in markings.iteritems():
