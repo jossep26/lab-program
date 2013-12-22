@@ -7,6 +7,8 @@ from ini.trakem2.display import AreaList, Display, AreaTree, Connector
 from fiji.geom import AreaCalculations
 import csv
 from jarray import array
+from java.awt.geom import Area
+from java.awt import Rectangle
 
 header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs', 'input', 'output']
 foundNeuriteNodes = [header]
@@ -55,8 +57,8 @@ for neurite in neurites:
 
             # get node connections, in/out synapse number, synapse id
             # NOTE: this method seems to be affected by display zoom value
-            area = nd.getArea()
-            area.transform(affine)
+            area = Area(Rectangle(int(fp[0]), int(fp[1]), 1, 1))
+            # area.transform(affine)
             inAndOuts = layerset.findZDisplayables(Connector, nd.getLayer(), area, False, False)
             outgoing = []
             incoming = []
