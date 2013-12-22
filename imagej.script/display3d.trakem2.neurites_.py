@@ -8,6 +8,7 @@ def getOutAndInPt(areatreePt):
         return None
     projectRoot = areatreePt.getRootParent()
     areatree = areatreePt.getObject()
+    # NOTE: buggy function? may transform area for nodes
     outAndIn = areatree.findConnectors()
     outPt = []
     inPt = []
@@ -28,11 +29,11 @@ nOuts = 0
 nIns = 0
 neurites = projectRoot.findChildrenOfTypeR("neurite")
 for neurite in neurites:
-    if 'apla_' in neurite.getTitle():
+    if re.match(r"^(apla_|in_|out_)", neurite.getTitle()):
         areatrees = neurite.findChildrenOfTypeR("areatree")
         for areatree in areatrees:
             nNeurites += 1
-            Display3D.show(areatree, 1, 8)
+            Display3D.show(areatree, 1, 4)
             oiPt = getOutAndInPt(areatree)
             nOuts += len(oiPt[0])
             nIns += len(oiPt[1])
@@ -41,7 +42,7 @@ for neurite in neurites:
             if oiPt is None:
                 continue
             for c in oiPt:
-                Display3D.show(c, 1, 8)
+                Display3D.show(c)
             # for iPt in oiPt[0]:
             #     Display3D.show(iPt, 1, 8)
     # if 'in_' in neurite.getTitle():
