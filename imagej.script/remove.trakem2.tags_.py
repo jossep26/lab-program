@@ -3,6 +3,11 @@
 from ini.trakem2.display import AreaList, Display, AreaTree, Connector
 import csv
 import itertools
+import re
+
+def onlyDigits(s):
+    od = re.compile('^\d+$')
+    return bool(od.search(s))
 
 areatrees = Display.getFront().getLayerSet().getZDisplayables(AreaTree)
 connectors = Display.getFront().getLayerSet().getZDisplayables(Connector)
@@ -17,6 +22,6 @@ for tree in itertools.chain(areatrees, connectors):
         if tags is None:
             continue
         for tag in tags:
-            if 'voted-' in tag.toString():
+            if onlyDigits(tag.toString()):
                 print "removing tag", tag, "for node:", node.getId()
                 node.removeTag(tag)
