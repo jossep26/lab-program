@@ -49,7 +49,7 @@ def getXYScatterness(tree, nodes):
     root = tree.getRoot()
     if root is None:
         return
-    coords = [getNodeXYZ(nd, calibration, affine) for nd in root.getSubtreeNodes()]
+    coords = [getNodeXYZ(nd, calibration, affine) for nd in nodes]
     xs = []
     ys = []
     # zs = []
@@ -57,7 +57,8 @@ def getXYScatterness(tree, nodes):
         xs.append(x)
         ys.append(y)
         # zs.append(z)
-    return std(xs) + std(ys)
+
+    return max(xs) - min(xs) + max(ys) - min(ys)
 
 # prepare output
 header = ['neuron','neurite','areatreeId','branchGroup','length','branchPos', 'nBranches','nodeScatterness']
@@ -74,7 +75,6 @@ for neurite in neurites:
     for areatree in areatrees:
         areatree = areatree.getObject()
         dTable = getTreeDistanceTable(areatree)
-        # print dTable
         root = areatree.getRoot()
         endNodes = set([nd for nd in areatree.getEndNodes()])
         branchNodes = set([nd for nd in areatree.getBranchNodes()])
@@ -82,8 +82,10 @@ for neurite in neurites:
             branchNodes.discard(root)
         if root in branchNodes:
             print '-----root is branch------'
+            print areatree
         else:
             print '---root is not branch---'
+            print areatree
 
         # case 0. root is the only node
         if 0 == root.getChildrenCount():
@@ -105,7 +107,7 @@ for neurite in neurites:
                         lbMaxPM = pm
                         lbMaxNd = nd
                 ndVsLen[lbMaxNd] = lbMaxLen
-                print 'lobe max', nd, lbMaxLen
+                # print 'lobe max', nd, lbMaxLen
             longestNodes = sorted(ndVsLen, key=ndVsLen.get, reverse=True)
             nda = longestNodes[0]
             ndb = longestNodes[1]
@@ -119,7 +121,7 @@ for neurite in neurites:
             maintreeLength = pm.getDistance()
 
             mainTreeNodes = set(pm.getPath())
-            print 'scatterness', getXYScatterness(areatree, mainTreeNodes)
+            # print 'scatterness', getXYScatterness(areatree, mainTreeNodes)
             # branch nodes on main tree
             mainBranchNodes = mainTreeNodes.intersection(branchNodes)
             # main tree data['neuron','neurite','areatreeId','branchGroup','length','branchPos','nBranches','nodeScatterness']
@@ -134,7 +136,9 @@ for neurite in neurites:
                 # each branch in total
                 outdata.append([neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), 'major_branch', totalLength, zpos, len(subBranchNodes), getXYScatterness(areatree, subtreeNodes)])
                 
+print 'writing to file ...'
 outfile = open('branches.csv','wb')
 writer = csv.writer(outfile)
 writer.writerows(outdata)
 outfile.close()
+print 'done.'
