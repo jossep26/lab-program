@@ -8,12 +8,16 @@ import itertools
 def onlyDigits(s):
     od = re.compile('^\d+$')
     return bool(od.search(s))
-
+    
+def startWithDigits(s):
+    od = re.compile('^\d+')
+    return bool(od.search(s))
+    
 areatrees = Display.getFront().getLayerSet().getZDisplayables(AreaTree)
 connectors = Display.getFront().getLayerSet().getZDisplayables(Connector)
 
 for tree in itertools.chain(areatrees, connectors):
-    print "processing", type(tree), ":", tree.getId()
+#    print "processing", type(tree), ":", tree.getId()
     root = tree.getRoot()
     if root is None:
         break
@@ -22,6 +26,6 @@ for tree in itertools.chain(areatrees, connectors):
         if tags is None:
             continue
         for tag in tags:
-            if onlyDigits(tag.toString()):
+            if re.match(r"^voted-3/4$", tag.toString()):
                 print "removing tag", tag, "for node:", node.getId()
                 node.removeTag(tag)
