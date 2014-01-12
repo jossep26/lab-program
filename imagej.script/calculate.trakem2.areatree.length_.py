@@ -17,6 +17,7 @@ def getNodeXYZ(nd, cal, at):
     return [x, y, z]
 
 def getTreeDistanceTable(tree):
+    # calculate and store each node's distance to its parent node
     dTable = {}
     layerset = tree.getLayerSet()
     calibration = layerset.getCalibration()
@@ -58,7 +59,7 @@ def getXYScatterness(tree, nodes):
         ys.append(y)
         # zs.append(z)
 
-    return max(xs) - min(xs) + max(ys) - min(ys)
+    return (max(xs) - min(xs) + max(ys) - min(ys))/len(xs)
 
 # prepare output
 header = ['neuron','neurite','areatreeId','branchGroup','length','branchPos', 'nBranches','nodeScatterness']
