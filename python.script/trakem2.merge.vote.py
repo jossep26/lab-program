@@ -37,6 +37,13 @@ def getObjId(objX) :
             objId = objX.get('id')
     return objId
 
+def isCandidateTag(nodeTag):
+    tagName = nodeTag.get('name')
+    if re.match(r"^E[CT]-", tagName) is None:
+        return False
+    else:
+        return True
+
 def voteStatistician(rootA, rootB, voter, tagError = 1) : 
     if not isinstance(voter, basestring) :
         print "wrong voter."
@@ -50,14 +57,14 @@ def voteStatistician(rootA, rootB, voter, tagError = 1) :
                 matchedObjB = objB
                 break
         if matchedObjB is None:
-            # error, certainly, and skip to next areatree or connector
+            # error, and skip to next areatree or connector
             print "error: cannot find corresponding element for", getObjId(objA)
             continue
 
         # iterate node
         for nodeA in objA.iter('t2_node'):
             # determine whether this node is a candidate
-            candidate = [x.get('name') for x in nodeA.findall('t2_tag') if 'ET-' in x.get('name') or 'EC-' in x.get('name')]
+            candidate = [x.get('name') for x in nodeA.findall('t2_tag') if isCandidateTag(x)]
             nCandidates = len(candidate)
             if nCandidates <= 0:
                 # examine next node A

@@ -107,16 +107,11 @@ def voteChecker(rootA, rootB, voter, tagError = 1) :
             votingTagB = [x for x in matchedNodeB.findall('t2_tag') if 'VOTE-yes' in x.get('name') or 'VOTE-no' in x.get('name')]
             if len(votingTagB) is not 1:
                 # voting wrong, probably missing
-                r = SubElement(matchedNodeB, 't2_tag', {'name' : "REVOTE-" + voter, 'key' : "R"})
+                r = SubElement(nodeA, 't2_tag', {'name' : "REVOTE-" + voter, 'key' : "R"})
                 print getObjId(matchedNodeB), "vote tag wrong, revote."
                 continue
-            # else :
-            #     # print getObjId(matchedNodeB) , "vote accepted."
-            #     allVote += 1
-            #     # voteAcceptTagA = SubElement(nodeA, 't2_tag', {'name' : "VALID-" + voter, 'key' : "O"})
-            #     if 'VOTE-yes' in votingTagB[0].get('name') : 
-            #         voteYes += 1
-            #     votedTagA.set('name', 'voted-' + str(voteYes) + '/' + str(allVote))
+            else :
+                nodeA.extend([x for x in votingTagB])
 
 
 # tool funcions end
