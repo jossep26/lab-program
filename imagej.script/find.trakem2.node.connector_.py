@@ -26,7 +26,7 @@ def isTree(x):
     if isinstance(x, Connector):
         return False
     return isinstance(x, Treeline) or isinstance(x, AreaTree)
- 
+
 def findConnectorsInTree(tree):
     # returns a dict of two values, each contains a dict of node versus connectors
     if not isTree(tree):
@@ -118,14 +118,26 @@ def fixAreatreeArea(areatree):
         a.add(Area(Rectangle(int(nd.getX()), int(nd.getY()), 1, 1)))
         nd.setData(a)
 
+def getTreeNeuriteTable(project):
+    # return a dict of areatree/treeline vs. project neurite
+    t = {}
+    projectRoot = project.getRootProjectThing()
+    neurites = projectRoot.findChildrenOfTypeR("neurite")
+    for neurite in neurites:
+        trees = neurite.findChildrenOfTypeR("areatree")
+        # trees.addAll(neurite.findChildrenOfTypeR("treeline"))
+        for tree in trees:
+            t[tree.getObject()] = neurite
+    return t
+
 ##### tools end #####
 
-header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs']
+header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nSynapseInputs', 'nSynapseOutputs', 'inputNeurites', 'outputNeurites']
 foundNeuriteNodes = [header]
 
 project = Project.getProjects().get(0)
 projectRoot = project.getRootProjectThing()
-
+tnTable = getTreeNeuriteTable(project)
 neurites = projectRoot.findChildrenOfTypeR("neurite")
 for neurite in neurites:
     if 'test_' not in neurite.getTitle():
@@ -138,7 +150,7 @@ for neurite in neurites:
             break
 
         cTable = findConnectorsInTree(areatree) # auto find connectors
-        print findConnectedTree(areatree)
+        ctTable = findConnectedTree(areatree)
         branchId = 1
         branchTable = {}
         markTreeBranch(root)
@@ -147,20 +159,20 @@ for neurite in neurites:
         calibration = layerset.getCalibration()
         affine = areatree.getAffineTransform()
         for nd in root.getSubtreeNodes():
-            # manually labeled synapse
-            tags = nd.getTags()
-            nOutputs = 0
-            nInputs = 0
-            if tags is None:
-                continue
-            for tag in tags:
-                if 'output_' in tag.toString():
-                    nOutputs = 1
-                if 'input_' in tag.toString():
-                    posN = tag.toString().find('_')
-                    nInputs = int(tag.toString()[posN+1 :])
-            if 0 == (nOutputs + nInputs):
-                continue
+            # # manually labeled synapse
+            # tags = nd.getTags()
+            # nOutputs = 0
+            # nInputs = 0
+            # if tags is None:
+            #     continue
+            # for tag in tags:
+            #     if 'output_' in tag.toString():
+            #         nOutputs = 1
+            #     if 'input_' in tag.toString():
+            #         posN = tag.toString().find('_')
+            #         nInputs = int(tag.toString()[posN+1 :])
+            # if 0 == (nOutputs + nInputs):
+            #     continue
                     
             # auto find synapse
             nAutoOut = 0
@@ -171,9 +183,21 @@ for neurite in neurites:
                 nAutoOut = len(outputs[nd])
             if nd in inputs:
                 nAutoIn = len(inputs[nd])
-            if nOutputs != nAutoOut or nInputs != nAutoIn:
-                print nd, 'MAN', nOutputs, 'outputs', nInputs, 'inputs'
-                print nd, 'AUTO', nAutoOut, 'outputs', nAutoIn, 'inputs'
+            if 0 == (nAutoIn + nAutoOut):
+                continue
+
+            # auto find connected tree, may not be the same number as synaptic targets
+            outs = ctTable['outputs']
+            ins = ctTable['inputs']
+            outputNeurites = []
+            inputNeurites = []
+            # if nd not in outs or nd not in ins:
+            #     continue
+            if nd in outs:
+                outputNeurites = [str(tnTable[t].getTitle()) for t in outs[nd]]
+            if nd in ins:
+                inputNeurites = [str(tnTable[t].getTitle()) for t in ins[nd]]
+
             # get node coordinates, from tut on web
             fp = array([nd.getX(), nd.getY()], 'f')
             affine.transform(fp, 0, fp, 0, 1)
@@ -192,11 +216,11 @@ for neurite in neurites:
 
             ndLayerIndex = nd.getLayer().getParent().indexOf(nd.getLayer()) + 1
             # save a line of node profile data
-            # ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs', 'input', 'output']
-            nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), branch, ndLayerIndex, x, y, z, ndArea, nInputs, nOutputs]
+            # ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nSynapseInputs', 'nSynapseOutputs', 'inputNeurites', 'outputNeurites']
+            nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), branch, ndLayerIndex, x, y, z, ndArea, nAutoIn, nAutoOut, inputNeurites, outputNeurites]
             foundNeuriteNodes.append(nodeData)
 
-# outfile = open('neuritesConnectors01.csv','wb')
-# writer = csv.writer(outfile)
-# writer.writerows(foundNeuriteNodes)
-# outfile.close()
+outfile = open('neuritesConnectors01.csv','wb')
+writer = csv.writer(outfile)
+writer.writerows(foundNeuriteNodes)
+outfile.close()
