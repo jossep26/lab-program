@@ -35,4 +35,5 @@ for connector in connectors:
     for childnode in root.getChildrenNodes():
         if not containsTag(childnode, 'EC-link'):
             childnode.addTag(theTag)
+            print 'set new tag on', connector.getId()
     unsetTagWithString(root, 'EC-link')
