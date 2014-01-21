@@ -7,7 +7,6 @@ import re
 import os
 import csv
 
-
 def getObjectVsProject(project):
 # return a object vs project dict
     table = {}
@@ -88,9 +87,17 @@ voteTypes = ["areatree", "connector"]
 
 # Load the projects
 originProject = Project.openFSProject(opffn, False) # don't open display
+originProject.setTitle(os.path.basename(opffn))
 voteProjects = []
 for vpffn in vpffns:
-    voteProjects.append(Project.openFSProject(vpffn, False))
+    vp = Project.openFSProject(vpffn, False)
+    if vp is None:
+        print "Warning: cannot open", vpffn
+        continue
+    # tidy up the project title
+    bn = os.path.basename(vpffn)
+    vp.setTitle(bn)
+    voteProjects.append(vp)
 
 # tt = getObjectVsProject(originProject)
 voteRe = re.compile(r"^VOTE-(yes|no)$")
@@ -124,8 +131,8 @@ for voteProject in voteProjects:
             print "missing vote at node", ndId
             nd.addTag(Tag("REVOTE-"+voter, KeyEvent.VK_R))
         sumTable[ndId] = [nYesVotes, nAllVotes]
-        voteProject.getLoader().setChanged(False) # avoid dialog at closing
-        voteProject.destroy()
+    voteProject.getLoader().setChanged(False) # avoid dialog at closing
+    voteProject.destroy()
 
 for ndId, votes in sumTable.iteritems():
     nd = candidateIdVsNode[ndId]
@@ -135,5 +142,6 @@ for ndId, votes in sumTable.iteritems():
     nd.addTag(Tag(votedString, KeyEvent.VK_M))
 
 originProject.setTitle(os.path.basename(outfn))
+originProject.saveAs(outfn, False)
 originProject.getLoader().setChanged(False) # avoid dialog at closing
-originProject.saveAs(outfn)
+originProject.destroy()
