@@ -39,10 +39,7 @@ def getObjId(objX) :
 
 def isCandidateTag(nodeTag):
     tagName = nodeTag.get('name')
-    if re.match(r"^E[CT]-", tagName) is None:
-        return False
-    else:
-        return True
+    return bool(re.match(r"^E[CT]-", tagName))
 
 def voteStatistician(rootA, rootB, voter, tagError = 1) : 
     if not isinstance(voter, basestring) :
@@ -197,7 +194,7 @@ sys.setrecursionlimit(1000000)
 print "parsing main file"
 mainRoot = ET.parse(mainFile).getroot()
 project = mainRoot.find('project')
-project.set('title', outFile)
+project.set('title', os.path.basename(outFile))
 
 if mainRoot.tag != 'trakem2' : 
     print mainFile, ' has invalid trakem2 format!'
