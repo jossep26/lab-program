@@ -12,6 +12,8 @@ outFile = r'zby.20140116.merge.synapse.xml.gz'
 import xml.etree.ElementTree as ET
 # from xml.etree.ElementTree import SubElement
 import gzip
+import os
+import re
 import sys
 sys.setrecursionlimit(1000000) 
 
@@ -68,6 +70,10 @@ def getObjId(objX) :
             objId = objX.get('id')
     return objId
 
+def isVoteTag(tagString):
+    voteRe = re.compile(r"^VOTE-(yes|no)$")
+    return bool(voteRe.match(tagString))
+
 def objectMerger(objA, objB) : 
     for subObjB in objB : 
         if subObjB.tag in skipList :
@@ -75,10 +81,10 @@ def objectMerger(objA, objB) :
         for subObjA in objA : 
             if subObjA.tag == subObjB.tag and getObjId(subObjA) == getObjId(subObjB) : 
                 if subObjA.tag == 't2_node' : 
-                    t2_tagsB = subObjB.findall('t2_tag')     
+                    t2_tagsB = subObjB.findall('t2_tag')
                     t2_tagsA = subObjA.findall('t2_tag')
                     tagsA_List = [x.get('name') for x in t2_tagsA];
-                    subObjA.extend([x for x in t2_tagsB if x.get('name') not in tagsA_List])
+                    subObjA.extend([x for x in t2_tagsB if not (isVoteTag(x.get('name'))) and x.get('name') not in tagsA_List])
                 objectMerger(subObjA, subObjB)
                 break
         else : 
@@ -87,7 +93,7 @@ def objectMerger(objA, objB) :
 print "parsing main project..."
 mainRoot = parseProjectFileRoot(mainFile)
 project = mainRoot.find('project')
-project.set('title', outFile)
+project.set('title', os.path.basename(outFile))
 
 if mainRoot.tag is None : 
     print mainFile, ' has invalid trakem2 format!'
