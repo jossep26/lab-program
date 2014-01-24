@@ -3,11 +3,12 @@ from jarray import array
 from java.awt.geom import Area
 from java.awt.event import KeyEvent
 from java.awt import Rectangle
+from ij import IJ
 import re
 import os
 import csv
 
-
+### tools
 def getObjectVsProject(project):
 # return a object vs project dict
     table = {}
@@ -84,52 +85,49 @@ def removeAllTagsWithString(tagName, project):
                     if tagName in tag.toString():
                         nd.removeTag(tag)
 
-# get file names
-# op = OpenDialog("Choose original project", None)
-# opn = op.getFileName()
+def checkVotes(project):
+    basicProjectThingTypes = ["area_list", "areatree", "ball", "connector", "dissector", "pipe", "polyline", "profile", "profile_list", "treeline"]
+    voteTypes = ["areatree", "connector"]
 
-# if op is None:
-#     print "User canceled the dialog!"
-# else:
-#     opd = op.getDirectory()
-#     opffn = os.path.join(opd, opn)
+    nMissingVotes = 0
+    voteRe = re.compile(r"^VOTE-(yes|no)$")
+    yesVoteRe = re.compile(r"^VOTE-yes$")
+    revoteRe = re.compile(r"^REVOTE-")
+    candidateRe = re.compile(r"^E[CT]-")
 
-fn = r"g:\data\zby\EM.dualbeam\test\merge.vote\candidate.xml.gz"
+    print "remove existing REVOTE tags ..."
+    removeAllTagsWithString("REVOTE-", project)
+    print "done. Checking votes ..."
+
+    candidateTable = getVoteNodeTable(project)
+    candidateIdVsNode = getIdVsNode(project)
+
+    for ndId, tagNames in candidateTable.iteritems():
+        nd = candidateIdVsNode[ndId]
+        isCandidate = False
+        votes = []
+        for tagName in tagNames:
+            if candidateRe.match(tagName):
+                isCandidate = True
+            if voteRe.match(tagName):
+                votes.append(tagName)
+        if isCandidate:
+            if 1 != len(votes):
+                # one and only one vote should exist
+                print "found missing vote"
+                nMissingVotes = nMissingVotes + 1
+                nd.addTag(Tag("REVOTE-this", KeyEvent.VK_R))
+
+    print "done."
+    return nMissingVotes
 
 
-
-basicProjectThingTypes = ["area_list", "areatree", "ball", "connector", "dissector", "pipe", "polyline", "profile", "profile_list", "treeline"]
-voteTypes = ["areatree", "connector"]
-
-# get the first project
-project = Project.getProjects().get(0)
-
-# tt = getObjectVsProject(project)
-voteRe = re.compile(r"^VOTE-(yes|no)$")
-yesVoteRe = re.compile(r"^VOTE-yes$")
-revoteRe = re.compile(r"^REVOTE-")
-candidateRe = re.compile(r"^E[CT]-")
-
-print "remove existing REVOTE tags ..."
-removeAllTagsWithString("REVOTE-", project)
-print "done. Checking votes ..."
-
-candidateTable = getVoteNodeTable(project)
-candidateIdVsNode = getIdVsNode(project)
-
-for ndId, tagNames in candidateTable.iteritems():
-    nd = candidateIdVsNode[ndId]
-    isCandidate = False
-    votes = []
-    for tagName in tagNames:
-        if candidateRe.match(tagName):
-            isCandidate = True
-        if voteRe.match(tagName):
-            votes.append(tagName)
-    if isCandidate:
-        if 1 != len(votes):
-            # one and only one vote should exist
-            print "found missing vote"
-            nd.addTag(Tag("REVOTE-this", KeyEvent.VK_R))
-
-print "done."
+## run checking votes with a dialogue hint
+firstProject = Project.getProjects().get(0)
+if IJ.showMessageWithCancel("Checking Votes For TrakEM2 Project", "Will now check for missing votes in TrakEM2 project:\n"+firstProject.getTitle()):
+    n = checkVotes(firstProject)
+    if 0 == n:
+        msg = "Well done! All candidates ara voted in:\n"+firstProject.getTitle()
+    else:
+        msg = str(n)+" votes missing in project:\n"+firstProject.getTitle()+"\n \nSearch REVOTE- to view missed votes.\nPlease re-check after appending missing votes."
+    IJ.showMessage("Checking Votes Done", msg)
