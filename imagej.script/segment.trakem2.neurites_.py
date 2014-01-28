@@ -1,6 +1,6 @@
 from ini.trakem2.display import Tag
 from java.awt.event import KeyEvent
-from ini.trakem2.display import AreaList, Display, AreaTree, Connector, Node
+from ini.trakem2.display import AreaList, Display, AreaTree, Connector, Node, Treeline
 from ini.trakem2.display.Tree import MeasurePathDistance
 from fiji.geom import AreaCalculations
 import csv
@@ -86,7 +86,7 @@ def getLongestPathNodes(areatree):
         return
     # case 1. else
     else:
-        # get longest path from each lobe
+        # get longest path from each 'lobe'
         ndVsLen = {}
         ndVsLen[root] = 0.0    # compatibility when root children count is 1
         for loberoot in root.getChildrenNodes():
@@ -114,20 +114,98 @@ def getLongestPathNodes(areatree):
             ndbottom =nda
     return [ndtop, ndbottom]
 
-def getCutNodes(root):
-    cutNodes = []
+def isTree(x):
+    if isinstance(x, Connector):
+        return False
+    return isinstance(x, Treeline) or isinstance(x, AreaTree)
+
+def findConnectorsInTree(tree):
+    # returns a dict of two values, each contains a dict of node versus connectors
+    if not isTree(tree):
+        print "error: input is neither Treeline or AreaTree"
+        return
+    outgoing = {}
+    incoming = {}
+    las = tree.getLayerSet()
+    cal = las.getCalibration()
+    at = tree.getAffineTransform()
+    root = tree.getRoot()
+    if root is None:
+        return
     for nd in root.getSubtreeNodes():
-        tags = nd.getTags()
-        if tags is None:
+        # copied from TrakEM2_Scripting and Tree.java
+        la = nd.getLayer()
+        area = nd.getArea().clone()
+        area.transform(at)
+        cs = las.findZDisplayables(Connector, la, area, False, False)
+        if cs.isEmpty():
             continue
-        for tag in tags:
-            if 'output_' in tag.toString():
-                cutNodes.append(nd)
-                break
+        for connector in cs:
+            # print 'found', connector
+            if connector.intersectsOrigin(area, la):
+                if nd in outgoing:
+                    outgoing[nd].append(connector)
+                else:
+                    outgoing[nd] = [connector]
+            else:
+                if nd in incoming:
+                    incoming[nd].append(connector)
+                else:
+                    incoming[nd] = [connector]
+    return {'outgoing':outgoing, 'incoming':incoming}
+
+def findConnectedTree(tree):
+    # returns a dict of two values, each contains a dict of node versus tree
+    if isinstance(tree, AreaTree):
+        fixAreatreeArea(tree)
+    outputs = {}
+    inputs = {}
+    las = tree.getLayerSet()
+    cal = las.getCalibration()
+    at = tree.getAffineTransform()
+    root = tree.getRoot()
+    if root is None:
+        return
+    for nd in root.getSubtreeNodes():
+        # copied from TrakEM2_Scripting and Tree.java
+        la = nd.getLayer()
+        area = nd.getArea().clone()
+        area.transform(at)
+        cs = las.findZDisplayables(Connector, la, area, False, False)
+        if cs.isEmpty():
+            continue
+        for connector in cs:
+            # print 'found', connector
+            if connector.intersectsOrigin(area, la):
+                # outgoing connector
+                t = filter(isTree, [t for ts in connector.getTargets() for t in ts])
+                # print 'targets', t
+                if nd in outputs:
+                    outputs[nd].extend(t)
+                else:
+                    outputs[nd] = t
+            else:
+                o = filter(isTree, connector.getOrigins())
+                # print 'origin', o
+                if nd in inputs:
+                    inputs[nd].extend(o)
+                else:
+                    inputs[nd] = o
+    return {'outputs':outputs, 'inputs':inputs}
+
+def getCutNodes(tree):
+    root = tree.getRoot()
+    if root is None:
+        return
+    cs = findConnectorsInTree(tree)
+    cutNodes = cs['outgoing'].keys()
     return set(cutNodes)
 
-def markTreeSegment(root):
-    cutNodes = getCutNodes(root)
+def markTreeSegment(tree):
+    root = tree.getRoot()
+    if root is None:
+        return
+    cutNodes = getCutNodes(tree)
     branchNodes = set([nd for nd in root.getBranchNodes()])
     branchCutNodes = branchNodes.intersection(cutNodes)
     markings = {}
@@ -186,12 +264,47 @@ def markTreeSegment(root):
 
     return uniqueMarkingsRev
 
-header = ['neuron','neurite','areatreeId','segmentId','length','nBranches','z','nInputs','meanInputDistance','varInputDistance']
+def fixAreatreeArea(areatree):
+    # Append a 1-pixel square area for nodes without any area
+    # this will fix using findZDisplayables for finding areatree, 
+    #     including connector.getTargets(), connector.getOrigins() etc.
+    if not isinstance(areatree, AreaTree):
+        print "Error: input must be an AreaTree"
+        return
+    root = areatree.getRoot()
+    if root is None:
+        return
+    for nd in root.getSubtreeNodes():
+        a = nd.getArea()
+        a.add(Area(Rectangle(int(nd.getX()), int(nd.getY()), 1, 1)))
+        nd.setData(a)
+
+def fixAllAreatreeArea(project):
+    areatrees = project.getRootProjectThing().findChildrenOfTypeR("areatree")
+    for areatree in areatrees:
+        areatree = areatree.getObject()
+        fixAreatreeArea(areatree)
+
+def getTreeNeuriteTable(project):
+    # return a dict of areatree/treeline vs. project neurite
+    t = {}
+    projectRoot = project.getRootProjectThing()
+    neurites = projectRoot.findChildrenOfTypeR("neurite")
+    for neurite in neurites:
+        trees = neurite.findChildrenOfTypeR("areatree")
+        # trees.addAll(neurite.findChildrenOfTypeR("treeline"))
+        for tree in trees:
+            t[tree.getObject()] = neurite
+    return t
+
+header = ['neuron','neurite','areatreeId','segmentId','length','nBranches','z','nInputs','inputs', 'meanInputDistance','varInputDistance']
 outputdata = [header]
 
-project = Project.getProjects().get(2)
+project = Project.getProjects().get(0)
 projectRoot = project.getRootProjectThing()
+fixAllAreatreeArea(project)
 
+treeVsNeurite = getTreeNeuriteTable(project)
 neurites = projectRoot.findChildrenOfTypeR("neurite")
 for neurite in neurites:
     if re.match(r"^(test|apla_|in_|out_)", neurite.getTitle()) is None:
@@ -209,13 +322,14 @@ for neurite in neurites:
         branchNodes = set([nd for nd in areatree.getBranchNodes()])
         if 2 == root.getChildrenCount():
             branchNodes.discard(root)
-        cutNodes = getCutNodes(root)
+        cutNodes = getCutNodes(areatree)
         dt = getTreeDistanceTable(areatree)
         topnd, bottomnd = getLongestPathNodes(areatree)
         mnds = set(MeasurePathDistance(areatree, topnd, bottomnd).getPath())
 
-        markings = markTreeSegment(root)
+        markings = markTreeSegment(areatree)
         for i, nds in markings.iteritems():
+            # for each segment
             length = sum([d for nd, d in dt.iteritems() if nd in nds])
             mainSegNds = nds.intersection(mnds)
             subSegNds = nds.difference(mnds)
@@ -225,9 +339,22 @@ for neurite in neurites:
             ndXYZs = [getNodeXYZ(nd, calibration, affine) for nd in nds]
             zs = [z for x,y,z in ndXYZs]
             meanZ = sum(zs)/len(zs)
-            inputs = getInputs(nds)
+            # connectors = findConnectorsInTree(areatree)
+            # inputs = connectors['inputs']
+            trees = findConnectedTree(areatree)
+            inputs = trees['inputs']
+            segInputs = dict((nd,inputs[nd]) for nd in nds if nd in inputs)
             inDistance = []
-            for innd, n in inputs.iteritems():
+            inputTrees = [str(treeVsNeurite[tree].getTitle()) for nd, trees in segInputs.iteritems() for tree in trees]
+            nInputs = 0
+            for innd, incoming in segInputs.iteritems():
+                # print innd.getLayer().getParent().indexOf(innd.getLayer())+1, incoming
+                n = len(incoming)
+                if 0 == n:
+                    # this means no tree identified, but there should be counted as 1 input
+                    n = 1
+                nInputs += n
+                # inputTrees.extend(incoming)
                 # nearest distance from input to ouput(cut points)
                 ds = []
                 for cnd in segCutNds:
@@ -244,12 +371,12 @@ for neurite in neurites:
             #     nd.addTag(Tag(str(i)+'main', KeyEvent.VK_K))
             # for nd in bSegNds:
             #     nd.addTag(Tag(str(i)+'b', KeyEvent.VK_K))
-            #['neuron','neurite','areatreeId','segmentId','length','nBranches','z','nInputs','meanInputDistance','varInputDistance']
-            outputdata.append([neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), i, length, len(segBranchNds), meanZ, len(inDistance), mean(inDistance), var(inDistance)])
+            #['neuron','neurite','areatreeId','segmentId','length','nBranches','z','nInputs','inputs','meanInputDistance','varInputDistance']
+            outputdata.append([neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), i, length, len(segBranchNds), meanZ, nInputs, inputTrees, mean(inDistance), var(inDistance)])
 
 # print outputdata
 print 'writing ...'
-outfile = open('segments.csv','wb')
+outfile = open('segmentsTT.csv','wb')
 writer = csv.writer(outfile)
 writer.writerows(outputdata)
 outfile.close()
