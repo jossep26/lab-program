@@ -13,7 +13,7 @@ subFiles = (
             r'voter3.20131211.vote.xml',  
             )
 
-outFile = r'vmerger.20131212.v.merge3.xml'
+outFile = r'vmerger.20131212.v.merge3.xml.gz'
 
 
 # tool functions
@@ -188,7 +188,7 @@ for subFile, subRoot in subRoots.iteritems():
     voter = getVoter(subFile)
     voteTable = getNodeIdVsVote(subRoot)
     for nodeId, candidateTagNames in candidateTable.iteritems():
-        node = candidateTable[nodeId]
+        node = candidateNodeTable[nodeId]
         nYesVotes = sumVoteTable[nodeId][0]
         nAllVotes = sumVoteTable[nodeId][1]
         if nodeId in voteTable:
