@@ -33,7 +33,7 @@ for tree in itertools.chain(areatrees, connectors):
     print "processing", type(tree), ":", tree.getId()
     root = tree.getRoot()
     if root is None:
-        break
+        continue
     for node in root.getSubtreeNodes():
         tags = node.getTags()
         if tags is None:

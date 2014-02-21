@@ -12,7 +12,7 @@ for areatree in areatrees:
     
     root = areatree.getRoot()
     if root is None:
-        break
+        continue
 
     for node in root.getSubtreeNodes():
         tags = node.getTags()
@@ -25,7 +25,7 @@ connectors = Display.getFront().getLayerSet().getZDisplayables(Connector)
 for connector in connectors:
     root = connector.getRoot()
     if root is None:
-        break
+        continue
     for node in root.getSubtreeNodes():
         tags = node.getTags()
         if tags is None:

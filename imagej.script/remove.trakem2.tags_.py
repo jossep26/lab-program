@@ -3,7 +3,8 @@
 from ini.trakem2.display import AreaList, Display, AreaTree, Connector
 import csv
 import itertools
-import re
+
+import re
 
 def onlyDigits(s):
     od = re.compile('^\d+$')
@@ -20,7 +21,7 @@ for tree in itertools.chain(areatrees, connectors):
 #    print "processing", type(tree), ":", tree.getId()
     root = tree.getRoot()
     if root is None:
-        break
+        continue
     for node in root.getSubtreeNodes():
         tags = node.getTags()
         if tags is None:
