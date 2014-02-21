@@ -299,6 +299,7 @@ def getTreeNeuriteTable(project):
 
 header = ['neuron','neurite','areatreeId','segmentId','length','nBranches','z','nInputs','inputs', 'meanInputDistance','varInputDistance']
 outputdata = [header]
+seg = [['neuron','neurite','areatreeId','segmentId','inOrOut','contactAreatreeId','contactNeurite','contactNeuron']]
 
 project = Project.getProjects().get(0)
 projectRoot = project.getRootProjectThing()
@@ -327,6 +328,9 @@ for neurite in neurites:
         topnd, bottomnd = getLongestPathNodes(areatree)
         mnds = set(MeasurePathDistance(areatree, topnd, bottomnd).getPath())
 
+        connectedTrees = findConnectedTree(areatree)
+        inputs = connectedTrees['inputs']
+        outputs = connectedTrees['outputs']
         markings = markTreeSegment(areatree)
         for i, nds in markings.iteritems():
             # for each segment
@@ -341,11 +345,13 @@ for neurite in neurites:
             meanZ = sum(zs)/len(zs)
             # connectors = findConnectorsInTree(areatree)
             # inputs = connectors['inputs']
-            trees = findConnectedTree(areatree)
-            inputs = trees['inputs']
+            segOuputs = dict((nd,outputs[nd]) for nd in nds if nd in outputs)
+            outputTrees = [tree for nd, trees in segOuputs.iteritems() for tree in trees]
+
             segInputs = dict((nd,inputs[nd]) for nd in nds if nd in inputs)
             inDistance = []
-            inputTrees = [str(treeVsNeurite[tree].getTitle()) for nd, trees in segInputs.iteritems() for tree in trees]
+            inputTreesStr = [str(treeVsNeurite[tree].getTitle()) for nd, trees in segInputs.iteritems() for tree in trees]
+            inputTrees = [tree for nd, trees in segInputs.iteritems() for tree in trees]
             nInputs = 0
             for innd, incoming in segInputs.iteritems():
                 # print innd.getLayer().getParent().indexOf(innd.getLayer())+1, incoming
@@ -372,7 +378,13 @@ for neurite in neurites:
             # for nd in bSegNds:
             #     nd.addTag(Tag(str(i)+'b', KeyEvent.VK_K))
             #['neuron','neurite','areatreeId','segmentId','length','nBranches','z','nInputs','inputs','meanInputDistance','varInputDistance']
-            outputdata.append([neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), i, length, len(segBranchNds), meanZ, nInputs, inputTrees, mean(inDistance), var(inDistance)])
+            outputdata.append([neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), i, length, len(segBranchNds), meanZ, nInputs, inputTreesStr, mean(inDistance), var(inDistance)])
+            for tree in inputTrees:
+                # [['neuron','neurite','areatreeId','segmentId','inOrOut','contactAreatreeId','contactNeurite','contactNeuron']]
+                seg.append([neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), i, 'input', tree.getId(), treeVsNeurite[tree].getTitle(), treeVsNeurite[tree].getParent().getTitle()])
+            for tree in outputTrees:
+                # [['neuron','neurite','areatreeId','segmentId','inOrOut','contactAreatreeId','contactNeurite','contactNeuron']]
+                seg.append([neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), i, 'output', tree.getId(), treeVsNeurite[tree].getTitle(), treeVsNeurite[tree].getParent().getTitle()])
 
 # print outputdata
 print 'writing ...'
@@ -380,4 +392,10 @@ outfile = open('segmentsTT.csv','wb')
 writer = csv.writer(outfile)
 writer.writerows(outputdata)
 outfile.close()
+
+outfile2 = open('segments_in.csv','wb')
+writer = csv.writer(outfile2)
+writer.writerows(seg)
+outfile2.close()
+
 print 'done.'
