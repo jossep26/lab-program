@@ -18,7 +18,7 @@ import sys
 sys.setrecursionlimit(1000000) 
 
 objList = ['t2_node', 't2_areatree', 't2_connector', 't2_layer_set']
-skipList = ['t2_area', 't2_path', 't2_display']
+skipList = ['t2_display']
 
 def parseProjectFileRoot(filename):
     if filename.endswith(".xml.gz"):
