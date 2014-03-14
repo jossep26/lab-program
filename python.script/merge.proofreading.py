@@ -62,6 +62,10 @@ def writeProject(filename, headerStr, treeRoot):
     f.close()
     return True   
 
+def isVoteTag(tagString):
+    voteRe = re.compile(r"^VOTE-(yes|no)$")
+    return bool(voteRe.match(tagString))
+
 def getObjId(objX) : 
     objId = objX.get('noid')
     if not objId : 
@@ -70,25 +74,91 @@ def getObjId(objX) :
             objId = objX.get('id')
     return objId
 
-def isVoteTag(tagString):
-    voteRe = re.compile(r"^VOTE-(yes|no)$")
-    return bool(voteRe.match(tagString))
+def setNewCoor(objA, newCoor) : 
+    if objA.tag == 't2_node' : 
+        objA.set('x', str(float(objA.get('x')) - newCoor[0]))
+        objA.set('y', str(float(objA.get('y')) - newCoor[1]))
+    if objA.tag == 't2_path' : 
+        dStr = objA.get('d').split()
+        for i in range(1, len(dStr), 3) : 
+            dStr[i] = str(int(float(dStr[i]) - newCoor[0]))
+        for i in range(2, len(dStr), 3) : 
+            dStr[i] = str(int(float(dStr[i]) - newCoor[1]))
+        objA.set('d', ' '.join(dStr))
+    for subObj in objA : 
+        setNewCoor(subObj, newCoor)
 
-def objectMerger(objA, objB) : 
+def subObjectMerger(objA, objB, offsetA = [0.0, 0.0], offsetB = [0.0, 0.0]) : 
+    subOffsetA = objA.get('transform', 'matrix(1.0,0.0,0.0,1.0,0.0,0.0)')
+    subOffsetA = [float(x) for x in subOffsetA[subOffsetA.index('(') + 1 : subOffsetA.rindex(')')].split(',')[-2 :]]
+    subOffsetA[0] += offsetA[0]
+    subOffsetA[1] += offsetA[1]
+    
+    subOffsetB = objB.get('transform', 'matrix(1.0,0.0,0.0,1.0,0.0,0.0)')
+    subOffsetB = [float(x) for x in subOffsetB[subOffsetB.index('(') + 1 : subOffsetB.rindex(')')].split(',')[-2 :]]
+    subOffsetB[0] += offsetB[0]
+    subOffsetB[1] += offsetB[1]
+
     for subObjB in objB : 
         if subObjB.tag in skipList :
             continue
         for subObjA in objA : 
-            if subObjA.tag == subObjB.tag and getObjId(subObjA) == getObjId(subObjB) : 
+            if subObjA.tag == subObjB.tag and getObjId(subObjA) == getObjId(subObjB) :                
                 if subObjA.tag == 't2_node' : 
-                    t2_tagsB = subObjB.findall('t2_tag')
+                    t2_tagsB = subObjB.findall('t2_tag')     
                     t2_tagsA = subObjA.findall('t2_tag')
                     tagsA_List = [x.get('name') for x in t2_tagsA];
-                    subObjA.extend([x for x in t2_tagsB if not (isVoteTag(x.get('name'))) and x.get('name') not in tagsA_List])
-                objectMerger(subObjA, subObjB)
+                    subObjA.extend([x for x in t2_tagsB if x.get('name') not in tagsA_List])
+                subObjectMerger(subObjA, subObjB, subOffsetA, subOffsetB)
                 break
         else : 
+            setNewCoor(subObjB, [subOffsetA[0] - subOffsetB[0], subOffsetA[1] - subOffsetB[1]])
             objA.append(subObjB)
+
+def objBorder(objA, borderCoor = [sys.maxint, sys.maxint, -sys.maxint - 1, -sys.maxint - 1]) : 
+    if objA.tag == 't2_node' : 
+        radiusA = float(objA.get('r', '0'))
+        xCoor = float(objA.get('x'))
+        yCoor = float(objA.get('y'))
+        minX = round(xCoor - radiusA)
+        minY = round(yCoor - radiusA)
+        maxX = round(xCoor + radiusA)
+        maxY = round(yCoor + radiusA)
+        if minX < borderCoor[0] : borderCoor[0] = minX
+        if minY < borderCoor[1] : borderCoor[1] = minY
+        if maxX > borderCoor[2] : borderCoor[2] = maxX
+        if maxY > borderCoor[3] : borderCoor[3] = maxY
+    if objA.tag == 't2_path' : 
+        dStr = objA.get('d').split()
+        for i in range(1, len(dStr), 3) : 
+            xCoor = float(dStr[i])
+            if xCoor < borderCoor[0] : borderCoor[0] = xCoor
+            if xCoor > borderCoor[2] : borderCoor[2] = xCoor
+        for i in range(2, len(dStr), 3) : 
+            yCoor = float(dStr[i])
+            if yCoor < borderCoor[1] : borderCoor[1] = yCoor
+            if yCoor > borderCoor[3] : borderCoor[3] = yCoor
+    for subObj in objA : 
+        objBorder(subObj, borderCoor)
+
+resetList = ['t2_areatree', 't2_connector']
+
+def resetObj(objA) : 
+    if objA.tag in resetList : 
+        borderCoor = [sys.maxint, sys.maxint, -sys.maxint - 1, -sys.maxint - 1];
+        objBorder(objA, borderCoor)
+        objA.set('width', str(borderCoor[2] - borderCoor[0] + 1))
+        objA.set('height', str(borderCoor[3] - borderCoor[1] + 1))
+        offsetA = objA.get('transform', 'matrix(1.0,0.0,0.0,1.0,0.0,0.0)')
+        offsetA = [float(x) for x in offsetA[offsetA.index('(') + 1 : offsetA.rindex(')')].split(',')[-2 :]]
+        objA.set('transform', 'matrix(1.0,0.0,0.0,1.0,' + str(offsetA[0] + borderCoor[0]) + ',' + str(offsetA[1] + borderCoor[1]) + ')')
+        setNewCoor(objA, [borderCoor[0], borderCoor[1]])
+    for subObj in objA : 
+        resetObj(subObj)
+
+def objectMerger(objA, objB) : 
+    subObjectMerger(objA, objB)
+    resetObj(objA)
 
 print "parsing main project..."
 mainRoot = parseProjectFileRoot(mainFile)
