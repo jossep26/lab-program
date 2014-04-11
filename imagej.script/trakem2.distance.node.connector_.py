@@ -77,13 +77,8 @@ def getTreeNeuriteTable(project):
             t[tree.getObject()] = neurite
     return t
 
-
-
-neuriteList_zjj = ['in_a_005', 'in_b_012', 'in_i_006', 'in_b_001', 'in_b_005', 'in_a_006', 'in_e_002', 'out_g_003', 'out_g_002', 'in_h_008', 'in_b_006']
-neuriteList_wsx = ['in_h_009', 'out_d_001', 'in_b_006', 'out_b_002', 'in_h_010', 'in_j_001', 'in_c_003', 'in_h_011', 'in_h_005', 'in_a_003_out']
-neuriteList = neuriteList_wsx + neuriteList_zjj
-
-header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'to', 'from',  'distance']
+#####
+header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'to', 'from', 'distance']
 foundNeuriteNodes = [header]
 
 project = Project.getProjects().get(0)
