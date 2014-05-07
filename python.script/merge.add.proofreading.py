@@ -9,8 +9,12 @@ subFiles = (r'wsx.20140116.synapse.xml.gz',
 
 outFile = r'zby.20140116.merge.synapse.xml.gz'
 
+## Tools ##
 import xml.etree.ElementTree as ET
-# from xml.etree.ElementTree import SubElement
+from xml.etree.ElementTree import SubElement
+from shapely.geometry import Polygon
+from shapely.geometry import Point
+from shapely.ops import cascaded_union
 import gzip
 import os
 import re
@@ -23,8 +27,8 @@ skipList = ['t2_display']
 def parseProjectFileRoot(filename):
     if filename.endswith(".xml.gz"):
         f = gzip.open(filename, "rb")
-    elif filename.endswith(".xml", "rb"):
-        f = open(filename)
+    elif filename.endswith(".xml"):
+        f = open(filename, "rb")
     else:
         return None
     root = ET.parse(f).getroot()
@@ -109,6 +113,9 @@ def subObjectMerger(objA, objB, offsetA = [0.0, 0.0], offsetB = [0.0, 0.0]) :
                     t2_tagsA = subObjA.findall('t2_tag')
                     tagsA_List = [x.get('name') for x in t2_tagsA];
                     subObjA.extend([x for x in t2_tagsB if x.get('name') not in tagsA_List])
+                    for x in subObjB.findall('t2_area') : 
+                        setNewCoor(x, [subOffsetA[0] - subOffsetB[0], subOffsetA[1] - subOffsetB[1]])
+                        subObjA.append(x)
                 subObjectMerger(subObjA, subObjB, subOffsetA, subOffsetB)
                 break
         else : 
@@ -156,9 +163,34 @@ def resetObj(objA) :
     for subObj in objA : 
         resetObj(subObj)
 
+def areaUnion(objA) : 
+    for subObj in objA : 
+        if subObj.tag == 't2_node' : 
+            allArea = subObj.findall('t2_area')
+            if allArea is not None : 
+                allPolygons = [];
+                for newArea in allArea : 
+                    allCorStr = newArea.find('t2_path').get('d').split()
+                    allCors = [float(allCorStr[i]) for i in range(0, len(allCorStr)) if i % 3 != 0]
+                    newPolygon = Polygon([(allCors[i], allCors[i + 1]) for i in range(0, len(allCors), 2)])
+                    if newPolygon.contains(Point(float(subObj.get('x')), float(subObj.get('y')))) : 
+                        allPolygons.append(newPolygon)
+                    subObj.remove(newArea)
+                if not allPolygons:
+                    print "Bah!"
+                    continue
+                finalPolygon = list(cascaded_union(allPolygons).exterior.coords)
+                subArea = SubElement(subObj, 't2_area')
+                pathStr = 'M ' + ' '.join([str(int(x[0])) + ' ' + str(int(x[1])) + ' L' for x in finalPolygon])
+                SubElement(subArea, 't2_path', {'d' : pathStr[: -1] + 'z'})
+        areaUnion(subObj)
+
 def objectMerger(objA, objB) : 
     subObjectMerger(objA, objB)
     resetObj(objA)
+    areaUnion(objA)
+
+## Tools end ##   
 
 print "parsing main project..."
 mainRoot = parseProjectFileRoot(mainFile)
