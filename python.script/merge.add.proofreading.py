@@ -177,7 +177,7 @@ def areaUnion(objA) :
                         allPolygons.append(newPolygon)
                     subObj.remove(newArea)
                 if not allPolygons:
-                    print "Bah!"
+                    # print "Bah!"
                     continue
                 finalPolygon = list(cascaded_union(allPolygons).exterior.coords)
                 subArea = SubElement(subObj, 't2_area')
