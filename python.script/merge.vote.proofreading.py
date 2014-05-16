@@ -176,23 +176,19 @@ def resetObj(objA) :
 def areaUnion(objA) : 
     for subObj in objA : 
         if subObj.tag == 't2_node' : 
-            allArea = subObj.findall('t2_area')
-            if allArea is not None : 
-                allPolygons = [];
-                for newArea in allArea : 
-                    allCorStr = newArea.find('t2_path').get('d').split()
+            allPolygons = [];
+            for newArea in subObj.findall('t2_area') : 
+                for newPath in newArea.findall('t2_path') : 
+                    allCorStr = newPath.get('d').split()
                     allCors = [float(allCorStr[i]) for i in range(0, len(allCorStr)) if i % 3 != 0]
                     newPolygon = Polygon([(allCors[i], allCors[i + 1]) for i in range(0, len(allCors), 2)])
                     if newPolygon.contains(Point(float(subObj.get('x')), float(subObj.get('y')))) : 
                         allPolygons.append(newPolygon)
-                    subObj.remove(newArea)
-                if not allPolygons:
-                    # print "Bah!"
-                    continue
+                subObj.remove(newArea)
+            if len(allPolygons) != 0 : 
                 finalPolygon = list(cascaded_union(allPolygons).exterior.coords)
-                subArea = SubElement(subObj, 't2_area')
                 pathStr = 'M ' + ' '.join([str(int(x[0])) + ' ' + str(int(x[1])) + ' L' for x in finalPolygon])
-                SubElement(subArea, 't2_path', {'d' : pathStr[: -1] + 'z'})
+                SubElement(SubElement(subObj, 't2_area'), 't2_path', {'d' : pathStr[: -1] + 'z'})
         areaUnion(subObj)
 
 def objectMerger(objA, objB) : 
