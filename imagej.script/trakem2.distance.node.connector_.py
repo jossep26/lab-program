@@ -9,7 +9,7 @@ from java.awt.geom import Area
 from java.awt import Rectangle
 import re
 
-
+## tools
 def isTree(x):
     if isinstance(x, Connector):
         return False
@@ -80,6 +80,7 @@ def getTreeNeuriteTable(project):
 #####
 header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'to', 'from', 'distance']
 foundNeuriteNodes = [header]
+minDistances = [header]
 
 project = Project.getProjects().get(0)
 projectRoot = project.getRootProjectThing()
@@ -109,11 +110,22 @@ for neurite in neurites:
 
         # calculate distance for each input
         for nd in ndIn:
+            ds = []
             for tnd in ndOut:
                 # from output
                 d = MeasurePathDistance(areatree, nd, tnd).getDistance()
                 nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'incoming', 'outgoing', d]
                 foundNeuriteNodes.append(nodeData)
+                # for min
+                ds.append(d)
+            if not ds:  # empty
+                text = 'NA'
+            else:
+                text = min(ds)
+            minData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'incoming', 'outgoing', text]
+            minDistances.append(minData)
+
+            ds = []
             for tnd in ndIn:
                 # from input
                 if tnd == nd:
@@ -121,9 +133,18 @@ for neurite in neurites:
                 d = MeasurePathDistance(areatree, nd, tnd).getDistance()
                 nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'incoming', 'incoming', d]
                 foundNeuriteNodes.append(nodeData)
+                # for min
+                ds.append(d)
+            if not ds:  # empty
+                text = 'NA'
+            else:
+                text = min(ds)
+            minData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'incoming', 'incoming', text]
+            minDistances.append(minData)
 
         # calculate distance for each out
         for nd in ndOut:
+            ds = []
             for tnd in ndOut:
                 # from output
                 if tnd == nd:
@@ -131,11 +152,29 @@ for neurite in neurites:
                 d = MeasurePathDistance(areatree, nd, tnd).getDistance()
                 nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'outgoing', 'outgoing', d]
                 foundNeuriteNodes.append(nodeData)
+                # for min
+                ds.append(d)
+            if not ds:  # empty
+                text = 'NA'
+            else:
+                text = min(ds)
+            minData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'outgoing', 'outgoing', text]
+            minDistances.append(minData)
+
+            ds = []
             for tnd in ndIn:
                 # from input
                 d = MeasurePathDistance(areatree, nd, tnd).getDistance()
                 nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'outgoing', 'incoming', d]
                 foundNeuriteNodes.append(nodeData)
+                # for min
+                ds.append(d)
+            if not ds:  # empty
+                text = 'NA'
+            else:
+                text = min(ds)
+            minData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'outgoing', 'incoming', text]
+            minDistances.append(minData)
 
         # # input synapses
         # for nd, d in ndInDistance.iteritems():
@@ -173,8 +212,13 @@ for neurite in neurites:
         #     nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'outgoing', ndLayerIndex, x, y, z, ndArea, d]
         #     foundNeuriteNodes.append(nodeData)
 
-outfile = open('synapse-distances-zby.csv','wb')
+outfile = open('synapse-distances.csv','wb')
 writer = csv.writer(outfile)
 writer.writerows(foundNeuriteNodes)
 outfile.close()
-            
+
+# min
+outfile = open('synapse-min-distances.csv','wb')
+writer = csv.writer(outfile)
+writer.writerows(minDistances)
+outfile.close()
