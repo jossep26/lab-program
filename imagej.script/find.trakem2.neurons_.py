@@ -7,7 +7,7 @@
 from ini.trakem2.display import AreaList, Display, AreaTree, Connector
 import csv
 
-header = ['neuron']
+header = ['neurite', 'neuron', 'nNodes']
 foundNeurons = [header]
 
 # get the first open project, project root, and 'drosophila_brain'
@@ -17,7 +17,17 @@ brain = projectRoot.findChildrenOfType("drosophila_brain")[0]
 
 neurons = brain.findChildrenOfType("neuron")
 for neuron in neurons:
-    foundNeurons.append([neuron.getTitle()])
+    neurites = neuron.findChildrenOfType("neurite")
+    for neurite in neurites:
+        areatrees = neurite.findChildrenOfType("areatree")
+        nNodes = 0
+        for areatree in areatrees:
+            areatree = areatree.getObject()
+            root = areatree.getRoot()
+            if root is None:
+                continue
+            nNodes += len(root.getSubtreeNodes())
+        foundNeurons.append([neurite.getTitle(), neuron.getTitle(), nNodes])
 
 outfile = open('neurons.csv','wb')
 writer = csv.writer(outfile)
