@@ -121,9 +121,10 @@ def subObjectMerger(objA, objB, offsetA = [0.0, 0.0], offsetB = [0.0, 0.0]) :
                         subObjA.append(x)
                 subObjectMerger(subObjA, subObjB, subOffsetA, subOffsetB)
                 break
-        elif not onlyMergeExisting : 
-            setNewCoor(subObjB, [subOffsetA[0] - subOffsetB[0], subOffsetA[1] - subOffsetB[1]])
-            objA.append(subObjB)
+        else :
+            if not onlyMergeExisting : 
+                setNewCoor(subObjB, [subOffsetA[0] - subOffsetB[0], subOffsetA[1] - subOffsetB[1]])
+                objA.append(subObjB)
 
 def objBorder(objA, borderCoor = [sys.maxint, sys.maxint, -sys.maxint - 1, -sys.maxint - 1]) : 
     if objA.tag == 't2_node' : 
