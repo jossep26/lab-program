@@ -9,6 +9,9 @@ subFiles = (r'wsx.20140116.synapse.xml.gz',
 
 outFile = r'zby.20140116.merge.synapse.xml.gz'
 
+# switch between adding new objects and only updating existing ones
+onlyMergeExisting = True
+
 ## Tools ##
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import SubElement
@@ -118,7 +121,7 @@ def subObjectMerger(objA, objB, offsetA = [0.0, 0.0], offsetB = [0.0, 0.0]) :
                         subObjA.append(x)
                 subObjectMerger(subObjA, subObjB, subOffsetA, subOffsetB)
                 break
-        else : 
+        elif not onlyMergeExisting : 
             setNewCoor(subObjB, [subOffsetA[0] - subOffsetB[0], subOffsetA[1] - subOffsetB[1]])
             objA.append(subObjB)
 
