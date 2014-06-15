@@ -5,8 +5,10 @@ Created on Fri May 23 09:20:48 2014
 @author: Curio
 """
 
-xmlFile = r'D:\brian\zby\zby.20140314.m.a.xml'
-saveFile = r'D:\brian\zby\zby.20140314.m.a.AreaNew.xml'
+xmlFile = r'zby.proofreading.xml.gz'
+saveFile = r'zby.20140615.testCS.xml.gz'
+
+areatree_worklist = ['22476']
 
 from shapely.geometry import Point
 from shapely.geometry import Polygon
@@ -31,6 +33,7 @@ import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import SubElement
 import math
 import sys
+import gzip
 sys.setrecursionlimit(100000000) 
 
 def lineFitFunc(lineDirection, pointStd, pointTest) : 
@@ -136,7 +139,50 @@ def setArea(rootObj, areaMap) :
         subObj.set('crossradius', areaMap[subObj.get('oid')])
         setArea(subObj, areaMap)
 
-mainRoot = ET.parse(xmlFile).getroot()
+def parseProjectFileRoot(filename):
+    if filename.endswith(".xml.gz"):
+        f = gzip.open(filename, "rb")
+    elif filename.endswith(".xml"):
+        f = open(filename, "rb")
+    else:
+        return None
+    root = ET.parse(f).getroot()
+    f.close()
+    if root.tag != 'trakem2' : 
+        print filename, ' has invalid trakem2 format!'
+        return None
+    return root
+
+def getProjectHeaderString(filename):
+    headerStr = ''
+    if filename.endswith(".xml.gz"):
+        f = gzip.open(filename, "rb")
+    elif filename.endswith(".xml"):
+        f = open(filename, "rb")
+    else:
+        return None
+    for newLine in f : 
+        if newLine == '<trakem2>\n' : 
+            break
+        headerStr += newLine
+    f.close()
+    return headerStr
+
+def writeProject(filename, headerStr, treeRoot):
+    treeStr = ET.tostring(treeRoot, 'ISO-8859-1')
+    if filename.endswith(".xml.gz"):
+        f = gzip.open(filename, "wb")
+    elif filename.endswith(".xml"):
+        f = open(filename, "wb")
+    else:
+        return False
+    f.write(headerStr)
+    f.write(treeStr[treeStr.index('\n') + 1 : ])
+    f.close()
+    return True   
+
+print "parsing file", xmlFile
+mainRoot = parseProjectFileRoot(xmlFile)
 layerSet = mainRoot.findall('t2_layer_set')[0]
 infoMap = {}
 for newLayer in layerSet.findall('t2_layer'):
@@ -145,7 +191,7 @@ for newLayer in layerSet.findall('t2_layer'):
 pixelWidth = float(layerSet.find("t2_calibration").get("pixelWidth"))
 
 for newTree in layerSet.findall('t2_areatree') : 
-#    if newTree.get('oid') != '22476' : continue
+    if newTree.get('oid') not in areatree_worklist : continue
     print 'processing ' + newTree.get('oid')
     nodeMap = []
     SurfaceInfo = []
@@ -190,16 +236,8 @@ for newTree in layerSet.findall('t2_areatree') :
         areaMap[newNode[0]] = str(int(math.sqrt(convexArea / math.pi) * pixelWidth))
     setArea(newTree, areaMap)
     print newTree.get('oid') + ' Done!'
-    
-headerStr = ''
-mainFileHandle = open(xmlFile)
-for newLine in mainFileHandle : 
-    if newLine == '<trakem2>\n' : 
-        break
-    headerStr += newLine
-mainFileHandle.close()
-treeStr = ET.tostring(mainRoot, 'ISO-8859-1')
-outFileHandle = open(saveFile, 'w')
-outFileHandle.write(headerStr)
-outFileHandle.write(treeStr[treeStr.index('\n') + 1 : ])
-outFileHandle.close()
+
+headerStr = getProjectHeaderString(xmlFile)
+
+print "writing cross sectioned project to", saveFile
+writeProject(saveFile, headerStr, mainRoot)
