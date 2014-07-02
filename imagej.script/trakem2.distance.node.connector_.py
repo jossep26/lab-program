@@ -81,6 +81,8 @@ def getTreeNeuriteTable(project):
 header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'to', 'from', 'distance']
 foundNeuriteNodes = [header]
 minDistances = [header]
+dConnectorsId = [['neuron', 'neurite', 'areatreeId', 'nodeId', 'to', 'from', 'toId', 'fromId', 'distance']]
+connectorProfile = [['connectorId', 'neuron', 'neurite', 'areatreeId', 'nodeId', 'direction']]
 
 project = Project.getProjects().get(0)
 projectRoot = project.getRootProjectThing()
@@ -108,6 +110,15 @@ for neurite in neurites:
         if 0 == len(ndIn) or 0 == len(ndOut) :
             continue
 
+        # connector reference table
+        for nd, connectors in outputs.iteritems():
+            for c in connectors:
+                p = [c.getId(), neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'outgoing']
+                connectorProfile.append(p)
+        for nd, connectors in inputs.iteritems():
+            for c in connectors:
+                p = [c.getId(), neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'incoming']
+                connectorProfile.append(p)
         # calculate distance for each input
         for nd in ndIn:
             ds = []
@@ -118,6 +129,11 @@ for neurite in neurites:
                 foundNeuriteNodes.append(nodeData)
                 # for min
                 ds.append(d)
+                # for connectors with id
+                for toCt in inputs[nd]:
+                    for fromCt in outputs[tnd]:
+                        connectorData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'incoming', 'outgoing', toCt.getId(), fromCt.getId(), d]
+                        dConnectorsId.append(connectorData)
             if not ds:  # empty
                 text = 'NA'
             else:
@@ -135,6 +151,11 @@ for neurite in neurites:
                 foundNeuriteNodes.append(nodeData)
                 # for min
                 ds.append(d)
+                # for connectors with id
+                for toCt in inputs[nd]:
+                    for fromCt in inputs[tnd]:
+                        connectorData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'incoming', 'incoming', toCt.getId(), fromCt.getId(), d]
+                        dConnectorsId.append(connectorData)
             if not ds:  # empty
                 text = 'NA'
             else:
@@ -154,6 +175,11 @@ for neurite in neurites:
                 foundNeuriteNodes.append(nodeData)
                 # for min
                 ds.append(d)
+                # for connectors with id
+                for toCt in outputs[nd]:
+                    for fromCt in outputs[tnd]:
+                        connectorData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'outgoing', 'outgoing', toCt.getId(), fromCt.getId(), d]
+                        dConnectorsId.append(connectorData)
             if not ds:  # empty
                 text = 'NA'
             else:
@@ -169,6 +195,11 @@ for neurite in neurites:
                 foundNeuriteNodes.append(nodeData)
                 # for min
                 ds.append(d)
+                # for connectors with id
+                for toCt in outputs[nd]:
+                    for fromCt in inputs[tnd]:
+                        connectorData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), 'outgoing', 'incoming', toCt.getId(), fromCt.getId(), d]
+                        dConnectorsId.append(connectorData)
             if not ds:  # empty
                 text = 'NA'
             else:
@@ -221,4 +252,16 @@ outfile.close()
 outfile = open('synapse-min-distances.csv','wb')
 writer = csv.writer(outfile)
 writer.writerows(minDistances)
+outfile.close()
+
+# connector with id
+outfile = open('synapse-id-distances.csv','wb')
+writer = csv.writer(outfile)
+writer.writerows(dConnectorsId)
+outfile.close()
+
+# connector profiles
+outfile = open('synapse-profiles.csv','wb')
+writer = csv.writer(outfile)
+writer.writerows(connectorProfile)
 outfile.close()

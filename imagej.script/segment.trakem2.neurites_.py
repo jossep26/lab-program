@@ -300,6 +300,7 @@ def getTreeNeuriteTable(project):
 header = ['neuron','neurite','areatreeId','segmentId','length','nBranches','z','nInputs','inputs', 'meanInputDistance','varInputDistance']
 outputdata = [header]
 seg = [['neuron','neurite','areatreeId','segmentId','inOrOut','contactAreatreeId','contactNeurite','contactNeuron']]
+neuriteConnection = [['neuron','neurite','areatreeId','inOrOut','contactAreatreeId','contactNeurite','contactNeuron']]
 
 project = Project.getProjects().get(0)
 projectRoot = project.getRootProjectThing()
@@ -331,6 +332,15 @@ for neurite in neurites:
         connectedTrees = findConnectedTree(areatree)
         inputs = connectedTrees['inputs']
         outputs = connectedTrees['outputs']
+
+        # output tree connections
+        dtext = {'inputs':'input', 'outputs':'output'}
+        for d, cn in connectedTrees.iteritems():
+            # d for direction, cn for connection dict
+            for nd, targets in cn.iteritems():
+                for tree in targets:
+                    neuriteConnection.append([neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), dtext[d], tree.getId(), treeVsNeurite[tree].getTitle(), treeVsNeurite[tree].getParent().getTitle()])
+
         markings = markTreeSegment(areatree)
         for i, nds in markings.iteritems():
             # for each segment
@@ -397,5 +407,10 @@ outfile2 = open('segments_in.csv','wb')
 writer = csv.writer(outfile2)
 writer.writerows(seg)
 outfile2.close()
+
+outfile3 = open('neurite_connection.csv','wb')
+writer = csv.writer(outfile3)
+writer.writerows(neuriteConnection)
+outfile3.close()
 
 print 'done.'
