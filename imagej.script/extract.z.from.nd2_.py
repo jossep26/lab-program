@@ -11,6 +11,7 @@ def run():
     if srcDir is None:
         return
 
+    sumf = open(os.path.join(srcDir, 'summary.z.txt'), 'w')
     # fn = r'e:\Data\data\zby\imaging\20140627.imaging.alignment.z\526-4eGH146GC3-mCherry001.nd2'
     # # fn = r'e:\Data\data\zby\imaging\20140627.imaging.alignment.z\526-4eGH146GC3-mCherry011.nd2'
     # outfn = r'e:\Data\data\zby\imaging\20140627.imaging.alignment.z\526-4eGH146GC3-mCherry001.txt'
@@ -31,6 +32,8 @@ def run():
         #     continue
 
         print "Reading ", fn
+        sumf.write(fn)
+        sumf.write('\n')
         op = ImporterOptions()
         op.setId(fullfn)
         process = ImportProcess(op)
@@ -44,7 +47,11 @@ def run():
                 line = ''.join([k, '\t', str(meta[k])])
                 f.write(line)
                 f.write('\n')
+                sumf.write(line)
+                sumf.write('\n')                
         f.close()
+        sumf.write('\n')
+    sumf.close()
     print 'done.'
 
 run()
