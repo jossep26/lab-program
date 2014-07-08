@@ -1,10 +1,11 @@
 import re
 import os
+from java.lang import String
 from ij.io import DirectoryChooser
 from loci.plugins.in import ImportProcess, ImporterOptions
 
 
-def run():
+def run(debug=False):
     srcDir = DirectoryChooser("Batch Splitter: Chose Source Dir").getDirectory()
     # print srcDir
     # print type(srcDir)
@@ -16,7 +17,7 @@ def run():
     # # fn = r'e:\Data\data\zby\imaging\20140627.imaging.alignment.z\526-4eGH146GC3-mCherry011.nd2'
     # outfn = r'e:\Data\data\zby\imaging\20140627.imaging.alignment.z\526-4eGH146GC3-mCherry001.txt'
 
-    zString = ["Z position for position, plane #01", "Z position for position, plane #001", "dZStep", "dZLow", "dZPos", "dZHigh"]
+    zString = ["Z position for position, plane #01", "Z position for position, plane #001", "Z position for position #1, plane #1", "dZStep", "dZLow", "dZPos", "dZHigh"]
 
     for fn in os.listdir(srcDir):
         # Skip non-ND2 files
@@ -41,8 +42,15 @@ def run():
         meta = process.getOriginalMetadata()
 
         print "Writing", fulloutfn
+        # if debug:
+            # print meta.getMetadataString('\t')
+            # f.write('\n')
         f = open(fulloutfn, 'w')
         for k in meta.keySet():
+            if debug and 'Z' in k:
+                line = ''.join([k, '\t', str(meta[k])])
+                f.write(line)
+                f.write('\n')
             if k in zString:
                 line = ''.join([k, '\t', str(meta[k])])
                 f.write(line)
@@ -54,4 +62,4 @@ def run():
     sumf.close()
     print 'done.'
 
-run()
+run(True)
