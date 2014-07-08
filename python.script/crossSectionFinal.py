@@ -6,9 +6,9 @@ Created on Fri May 23 09:20:48 2014
 """
 
 xmlFile = r'zby.proofreading.xml.gz'
-saveFile = r'zby.20140615.testCS.xml.gz'
+saveFile = r'zby.cross-section.20140707.xml.gz'
 
-areatree_worklist = ['22476']
+areatree_worklist = ['22476','22465','22507']
 
 from shapely.geometry import Point
 from shapely.geometry import Polygon
@@ -33,15 +33,23 @@ import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import SubElement
 import math
 import sys
+import numpy
 import gzip
 sys.setrecursionlimit(100000000) 
 
 def lineFitFunc(lineDirection, pointStd, pointTest) : 
     newLine = Line_3(pointStd, Vector_3(lineDirection[0], lineDirection[1], lineDirection[2]))
     return [squared_distance(x, newLine) for x in pointTest]
+
     
-def getNodeMapSetCentroids(rootObj, nodeMap) : 
+def getNodeMapSetCentroids(rootObj, nodeMap, parentMap, childrenMap) : 
+    childrenMap[rootObj.get('oid')] = []
     for subObj in rootObj.findall('t2_node') : 
+        childrenMap[rootObj.get('oid')].append(subObj.get('oid'))
+        if rootObj.tag == 't2_node' : 
+            parentMap[subObj.get('oid')] = rootObj.get('oid')
+        else : 
+            parentMap[subObj.get('oid')] = None
         zCor = infoMap[subObj.get('lid')]
         centroidPoint = Point(float(subObj.get('x')), float(subObj.get('y')))
         flatRadius = 0
@@ -69,8 +77,8 @@ def getNodeMapSetCentroids(rootObj, nodeMap) :
         nodeMap.append((subObj.get('oid'), Point_3(float(subObj.get('x')), float(subObj.get('y')), float(zCor)), flatRadius))
         subObj.set('x', str(centroidPoint.x))
         subObj.set('y', str(centroidPoint.y))
-        subObj.set('flatradius', str(realFlatRadius * pixelWidth))
-        getNodeMapSetCentroids(subObj, nodeMap)
+        subObj.set('flatradius', str(int(realFlatRadius * pixelWidth)))
+        getNodeMapSetCentroids(subObj, nodeMap, parentMap, childrenMap)
      
         
 def getSurfaceInfoAndCentroidnormal(rootObj, SurfaceInfo, centroidNormals, rootCentroid = None, rootPolygon = None) : 
@@ -134,10 +142,45 @@ def findRightNormal(newNode, centroidNormals) :
             rightNormal = newCentroid[1]
     return rightNormal
 
-def setArea(rootObj, areaMap) : 
+def setArea(rootObj, areaMap, parentMap, childrenMap, normalMap) : 
     for subObj in rootObj.findall('t2_node') : 
-        subObj.set('crossradius', areaMap[subObj.get('oid')])
-        setArea(subObj, areaMap)
+        angleList = [normalMap[subObj.get('oid')], ]
+        valueList = [areaMap[subObj.get('oid')], ]
+        if rootObj.tag == 't2_node' : 
+            valueList.append(areaMap[rootObj.get('oid')])
+            angleList.append(normalMap[rootObj.get('oid')])
+            if parentMap[rootObj.get('oid')] is not None : 
+                valueList.append(areaMap[parentMap[rootObj.get('oid')]])
+                angleList.append(normalMap[parentMap[rootObj.get('oid')]])
+            else : 
+                valueList.append(0)
+                angleList.append(0)
+        else : 
+            valueList.append(0)
+            valueList.append(0)
+            angleList.append(0)
+            angleList.append(0)
+        if len(childrenMap[subObj.get('oid')]) > 0 : 
+            for newChildId in childrenMap[subObj.get('oid')] : 
+                valueList.append(areaMap[newChildId])
+                angleList.append(normalMap[newChildId])
+                if len(childrenMap[newChildId]) > 0 : 
+                    for newSubChildId in childrenMap[newChildId] : 
+                        valueList.append(areaMap[newSubChildId])
+                        angleList.append(normalMap[newSubChildId])
+                else : 
+                    valueList.append(0)
+                    angleList.append(0)
+        else : 
+            valueList.append(0)
+            valueList.append(0)
+            angleList.append(0)
+            angleList.append(0)
+        valueList.sort()
+        angleList.sort()
+        subObj.set('crossradius', str(valueList[len(valueList) / 2]))
+        subObj.set('normalangle', str(numpy.mean(angleList)))
+        setArea(subObj, areaMap, parentMap, childrenMap, normalMap)
 
 def parseProjectFileRoot(filename):
     if filename.endswith(".xml.gz"):
@@ -183,6 +226,7 @@ def writeProject(filename, headerStr, treeRoot):
 
 print "parsing file", xmlFile
 mainRoot = parseProjectFileRoot(xmlFile)
+
 layerSet = mainRoot.findall('t2_layer_set')[0]
 infoMap = {}
 for newLayer in layerSet.findall('t2_layer'):
@@ -190,18 +234,22 @@ for newLayer in layerSet.findall('t2_layer'):
     
 pixelWidth = float(layerSet.find("t2_calibration").get("pixelWidth"))
 
+
 for newTree in layerSet.findall('t2_areatree') : 
     if newTree.get('oid') not in areatree_worklist : continue
     print 'processing ' + newTree.get('oid')
     nodeMap = []
+    parentMap = {}
+    childrenMap = {}
     SurfaceInfo = []
     centroidNormals = []
-    getNodeMapSetCentroids(newTree, nodeMap)
+    getNodeMapSetCentroids(newTree, nodeMap, parentMap, childrenMap)
     getSurfaceInfoAndCentroidnormal(newTree, SurfaceInfo, centroidNormals)
     if len(SurfaceInfo) == 0 : 
         print newTree.get('oid') + ' no surface!'
         continue
     areaMap = {};
+    normalMap = {}
     for newNode in nodeMap : 
         planeNormal = findRightNormal(newNode[1], centroidNormals)
         sqLen = math.sqrt(planeNormal.squared_length())
@@ -209,7 +257,7 @@ for newTree in layerSet.findall('t2_areatree') :
         cosinXZ = abs(planeNormal.y()) / sqLen
         cosinYZ = abs(planeNormal.x()) / sqLen
         if cosinXY == 0 and cosinXZ == 0 and cosinYZ == 0 : 
-            areaMap[newNode[0]] = '0'
+            areaMap[newNode[0]] = 0
             continue
         planeQuery = Plane_3(newNode[1], planeNormal)
         newIntersections = [newObj.get_Point_3() for newObj in [intersection(planeQuery, newSegment) for newSegment in SurfaceInfo] if (not newObj.empty()) and newObj.is_Point_3()]
@@ -233,10 +281,11 @@ for newTree in layerSet.findall('t2_areatree') :
         if cosinXY != 0 : convexArea /= cosinXY
         elif cosinXZ != 0 : convexArea /= cosinXZ
         else : convexArea /= cosinYZ
-        areaMap[newNode[0]] = str(int(math.sqrt(convexArea / math.pi) * pixelWidth))
-    setArea(newTree, areaMap)
+        areaMap[newNode[0]] = int(math.sqrt(convexArea / math.pi) * pixelWidth + 0.5)
+        normalMap[newNode[0]] = math.acos(cosinXY)
+    setArea(newTree, areaMap, parentMap, childrenMap, normalMap)
     print newTree.get('oid') + ' Done!'
-
+    
 headerStr = getProjectHeaderString(xmlFile)
 
 print "writing cross sectioned project to", saveFile
