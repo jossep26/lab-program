@@ -4,13 +4,14 @@
 #       node.getId() only available in mod; if used in original, omit node id field
 
 from ini.trakem2.display import AreaList, Display, AreaTree, Connector
+from ini.trakem2 import Project
 from fiji.geom import AreaCalculations
 import csv
 from jarray import array
 from java.awt.geom import Area
 from java.awt import Rectangle
 
-header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs', 'input', 'output']
+header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'angle', 'radius', 'nInputs', 'nOutputs', 'input', 'output']
 foundNeuriteNodes = [header]
 
 # recursive function to assign nodes with 'branch id' to mark different linear segments
@@ -71,8 +72,8 @@ for neurite in neurites:
                     incoming.append(connector)
             nInputs = len(incoming)
             nOutputs = len(outgoing)
-            outgoingIds = [x.getId() for x in outgoing]
-            incomingIds = [x.getId() for x in incoming]
+            outgoingIds = [oc.getId() for oc in outgoing]
+            incomingIds = [ic.getId() for ic in incoming]
 
             # get node connections, out/in synapse number, synapse id
 
@@ -88,7 +89,7 @@ for neurite in neurites:
             ndLayerIndex = nd.getLayer().getParent().indexOf(nd.getLayer()) + 1
             # save a line of node profile data
             # ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs', 'input', 'output']
-            nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), branch, ndLayerIndex, x, y, z, ndArea, nInputs, nOutputs, incomingIds, outgoingIds]
+            nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), branch, ndLayerIndex, x, y, z, nd.getNormalAngle(), nd.getCrossRadius(), nInputs, nOutputs, incomingIds, outgoingIds]
             foundNeuriteNodes.append(nodeData)
 
 outfile = open('neurites.csv','wb')
