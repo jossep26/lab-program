@@ -11,7 +11,7 @@ from jarray import array
 from java.awt.geom import Area
 from java.awt import Rectangle
 
-header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'angle', 'radius', 'nInputs', 'nOutputs', 'input', 'output']
+header = ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'angle', 'radius', 'flatRadius', 'nInputs', 'nOutputs', 'input', 'output']
 foundNeuriteNodes = [header]
 
 # recursive function to assign nodes with 'branch id' to mark different linear segments
@@ -89,7 +89,7 @@ for neurite in neurites:
             ndLayerIndex = nd.getLayer().getParent().indexOf(nd.getLayer()) + 1
             # save a line of node profile data
             # ['neuron', 'neurite', 'areatreeId', 'nodeId', 'branch', 'layer', 'x', 'y', 'z', 'area', 'nInputs', 'nOutputs', 'input', 'output']
-            nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), branch, ndLayerIndex, x, y, z, nd.getNormalAngle(), nd.getCrossRadius(), nInputs, nOutputs, incomingIds, outgoingIds]
+            nodeData = [neurite.getParent().getTitle(), neurite.getTitle(), areatree.getId(), nd.getId(), branch, ndLayerIndex, x, y, z, nd.getNormalAngle(), nd.getCrossRadius(), nd.getFlatRadius(), nInputs, nOutputs, incomingIds, outgoingIds]
             foundNeuriteNodes.append(nodeData)
 
 outfile = open('neurites.csv','wb')
