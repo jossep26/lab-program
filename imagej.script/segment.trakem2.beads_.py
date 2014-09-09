@@ -148,7 +148,7 @@ def findConnectorsInTree(tree):
                     incoming[nd] = [connector]
     return {'outgoing':outgoing, 'incoming':incoming}
 
-nodes = [['neurite', 'areatreeId', 'nodeId', 'class']]
+nodes = [['neurite', 'areatreeId', 'nodeId', 'layer', 'crossRadius', 'class', 'branch']]
 
 project = Project.getProjects().get(0)
 projectTree = project.getProjectTree()
@@ -175,15 +175,22 @@ for neurite in neurites:
                 if 'BEAD' in tag.toString():
                     beadMarks.add(nd)
         markings = markTreeSegment(areatree, set(cuts))
+        branches = markTreeSegment(areatree, set([nd for nd in root.getBranchNodes()]))
+        branches2 = dict([])
+        for i, nds in branches.iteritems():
+            for nd in nds:
+                if nd not in branches2:
+                    branches2[nd] = i
         for i, nds in markings.iteritems():
             if nds.intersection(beadMarks):
                 tp = 'bead'
             else:
                 tp = 'string'
             for nd in nds:
-                nodes.append([neurite.getTitle(), areatree.getId(), nd.getId(), tp])
+                ndLayerIndex = nd.getLayer().getParent().indexOf(nd.getLayer()) + 1
+                nodes.append([neurite.getTitle(), areatree.getId(), nd.getId(), ndLayerIndex, nd.getCrossRadius(), tp, branches2[nd]])
 
-outfile = open('beads.csv','wb')
+outfile = open('beads-20140905.csv','wb')
 writer = csv.writer(outfile)
 writer.writerows(nodes)
 outfile.close()

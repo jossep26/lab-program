@@ -1,6 +1,7 @@
 from ini.trakem2 import Project
+from ini.trakem2.tree import ProjectThing
 from java.awt.event import KeyEvent
-from ini.trakem2.display import AreaList, Display, AreaTree, Connector, Node, Treeline, Tag
+from ini.trakem2.display import AreaList, Display, AreaTree, Connector, Node, Treeline, Tag, Display3D
 from ini.trakem2.display.Tree import MeasurePathDistance
 from fiji.geom import AreaCalculations
 import csv
