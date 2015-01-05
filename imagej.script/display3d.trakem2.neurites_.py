@@ -1,8 +1,6 @@
-from ini.trakem2.display import AreaList, Display, AreaTree, Connector
+from ini.trakem2.display import AreaList, Display, AreaTree, Connector, Display3D
 from ini.trakem2.tree import ProjectThing
 import re
-
-areatreeId = "22436"
 
 ## tools
 def getOutAndInPt(areatreePt, connectorTable):
@@ -106,16 +104,16 @@ for neurite in neurites:
         areatrees = neurite.findChildrenOfTypeR("areatree")
         for areatree in areatrees:
             nNeurites += 1
-            Display3D.show(areatree, 1, 4)
             oiPt = getOutAndInPt(areatree, ct)
             nOuts += len(oiPt[0])
             nIns += len(oiPt[1])
             oiPt = [x for y in oiPt for x in y]
-            print oiPt
+            # print oiPt
             if oiPt is None:
                 continue
             for c in oiPt:
-                Display3D.show(c)
+                Display3D.show(c, False, 4)
+            Display3D.show(areatree, False, 4)
             # for iPt in oiPt[0]:
             #     Display3D.show(iPt, 1, 8)
     # if 'in_' in neurite.getTitle():
