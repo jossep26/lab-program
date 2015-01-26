@@ -1,5 +1,6 @@
 from ij import IJ, ImagePlus, ImageStack
 from ij.gui import Overlay, Roi, PointRoi, Line, TextRoi
+from ij.gui import ImageWindow, ImageCanvas
 from ij.io import DirectoryChooser, OpenDialog
 from java.awt.event import KeyEvent, KeyAdapter, MouseAdapter
 from java.lang import String
@@ -29,7 +30,13 @@ def drawEnd(imp, pointsTable, keyEvent):
 
 class ListenToDrawEnd(KeyAdapter):
     def keyPressed(this, event):
-        imp = event.getSource().getImage()
+        source = event.getSource()
+        if isinstance(source, ImageCanvas):
+            imp = event.getSource().getImage()
+        elif isinstance(source, ImageWindow):
+            imp = event.getSource().getImagePlus()
+        else:
+            return
         # reads global pointsTable
         drawEnd(imp, pointsTable, event)
 
@@ -160,11 +167,16 @@ def prepareNewImage(imgIt, pointsTable, direction=None):
     if win:
         canvas = win.getCanvas()
         # override key listeners
-        kls = canvas.getKeyListeners()
-        print len(kls)
-        map(canvas.removeKeyListener, kls)
+        ckls = canvas.getKeyListeners()
+        map(canvas.removeKeyListener, ckls)
         canvas.addKeyListener(lEnd)
-        map(canvas.addKeyListener, kls)
+        map(canvas.addKeyListener, ckls)
+
+        wkls = win.getKeyListeners()
+        map(win.removeKeyListener, wkls)
+        win.addKeyListener(lEnd)
+        map(win.addKeyListener, wkls)
+
         canvas.addMouseListener(lAdd)
     imp.show()
     print "ding!"
