@@ -5,30 +5,15 @@ from ij.io import DirectoryChooser, OpenDialog
 from java.awt.event import KeyEvent, KeyAdapter, MouseAdapter
 from java.lang import String
 from java.awt import Color
+from javax.swing import JFrame, JPanel, JLabel, JProgressBar
 import os.path
 import random
 import math
 import csv
 
-def drawEnd(imp, pointsTable, keyEvent):
-    if keyEvent.getKeyCode() == KeyEvent.VK_SPACE:
-        print "space!"
-    if keyEvent.getKeyCode() == KeyEvent.VK_BACK_QUOTE:
-        print "save table!"
-        savePointsToTable(imp, pointsTable)
-        saveTableToFile(pointsTable, OUTFN)
-    if keyEvent.getKeyCode() == KeyEvent.VK_PERIOD:
-        print "next!"
-        savePointsToTable(imp, pointsTable)
-        imp.close()
-        prepareNewImage(imgIt, pointsTable)
-    if keyEvent.getKeyCode() == KeyEvent.VK_COMMA:
-        print "prev!"
-        savePointsToTable(imp, pointsTable)
-        imp.close()
-        prepareNewImage(imgIt, pointsTable, 'prev')
-
 class ListenToDrawEnd(KeyAdapter):
+    # def __init__(self, imgData):
+    #     self.imgData = imgData
     def keyPressed(this, event):
         source = event.getSource()
         if isinstance(source, ImageCanvas):
@@ -37,8 +22,31 @@ class ListenToDrawEnd(KeyAdapter):
             imp = event.getSource().getImagePlus()
         else:
             return
-        # reads global pointsTable
-        drawEnd(imp, pointsTable, event)
+        # reads global imgData
+        drawEnd(imp, imgData, event)
+
+def drawEnd(imp, imgData, keyEvent):
+    if keyEvent.getKeyCode() == KeyEvent.VK_SPACE:
+        print "space!"
+    if keyEvent.getKeyCode() == KeyEvent.VK_BACK_QUOTE:
+        print "save table!"
+        stashPoints(imp, imgData)
+        saveToFile(imgData)
+    if keyEvent.getKeyCode() == KeyEvent.VK_S:
+        print "save table!"
+        stashPoints(imp, imgData)
+        saveToFile(imgData)
+        keyEvent.consume()
+    if keyEvent.getKeyCode() == KeyEvent.VK_PERIOD:
+        print "next!"
+        stashPoints(imp, imgData)
+        imp.close()
+        prepareNewImage(imgData)
+    if keyEvent.getKeyCode() == KeyEvent.VK_COMMA:
+        print "prev!"
+        stashPoints(imp, imgData)
+        imp.close()
+        prepareNewImage(imgData, 'prev')
 
 class ListenToPointAdd(MouseAdapter):
     def mouseReleased(self, event):
@@ -92,46 +100,31 @@ def drawLines(imp, points=None):
     imp.setOverlay(ol)
     imp.updateAndDraw()
 
-def savePoints(imp):
-    # append points to existing file
+def stashPoints(imp, imgData):
+    # store/update points in imgData
+    # only 3 points
+    MAXPOINTS = 3
     cal = imp.getCalibration()
     roi = imp.getRoi()
+    if not roi:  return
     pp = roi.getFloatPolygon()
-    out = []
-    out.append(imp.getTitle())
-    for i in xrange(pp.npoints):
-        out.append(pp.xpoints[i])
-        out.append(pp.ypoints[i])
-    out.append(cal.pixelWidth)
-    out.append(cal.getUnit())
-
-    outfile = open(OUTFN,'ab')
-    writer = csv.writer(outfile)
-    writer.writerows([out])
-    outfile.close()
-
-def savePointsToTable(imp, pointsTable):
-    # pointsTable should be a dict
-    cal = imp.getCalibration()
-    roi = imp.getRoi()
-    pp = roi.getFloatPolygon()
+    if pp.npoints < MAXPOINTS:  return
     points = []
     for i in xrange(pp.npoints):
-        if i < NPOINTS:
-            # only record 3 points
+        if i < MAXPOINTS:
             points.append(pp.xpoints[i])
             points.append(pp.ypoints[i])
     points.append(cal.pixelWidth)
     points.append(cal.getUnit())
 
-    pointsTable[imp.getTitle()] = points
+    imgData.table[imp.getTitle()] = points
 
-def saveTableToFile(pointsTable, fn):
-    outfile = open(fn,'wb')
+def saveToFile(imgData):
+    pointsTable = imgData.table
+    outfile = open(imgData.fn,'wb')
     writer = csv.writer(outfile)
-    writer.writerows(HEADER)
-    print "header"
-    print pointsTable
+    headerRow = ['image_name', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3', 'pixel_width', 'unit']
+    writer.writerow(headerRow)
     for title, points in pointsTable.iteritems():
         entry = [title]
         entry.extend(points)
@@ -140,19 +133,19 @@ def saveTableToFile(pointsTable, fn):
     outfile.close()
     print 'saved!'
 
-def prepareNewImage(imgIt, pointsTable, direction=None):
+def prepareNewImage(imgData, direction=None):
     if direction == 'prev':
-        if not imgIt.hasPrev():
+        if not imgData.hasPrev():
             print 'end! back to first'
-        imgPath = imgIt.prev()
+        imgPath = imgData.prev()
     else:
-        if not imgIt.hasNext():
+        if not imgData.hasNext():
             print 'end! to end'
-        imgPath = imgIt.next()
+        imgPath = imgData.next()
 
     imp = IJ.openImage(imgPath)
     imp.show()
-
+    pointsTable = imgData.table
     if os.path.basename(imgPath) in pointsTable:
         pts = pointsTable[os.path.basename(imgPath)]
         if len(pts) >= 6:
@@ -165,42 +158,18 @@ def prepareNewImage(imgIt, pointsTable, direction=None):
 
     win = imp.getWindow()
     if win:
-        canvas = win.getCanvas()
         # override key listeners
-        ckls = canvas.getKeyListeners()
-        map(canvas.removeKeyListener, ckls)
-        canvas.addKeyListener(lEnd)
-        map(canvas.addKeyListener, ckls)
-
         wkls = win.getKeyListeners()
         map(win.removeKeyListener, wkls)
         win.addKeyListener(lEnd)
         map(win.addKeyListener, wkls)
 
+        canvas = win.getCanvas()
+        ckls = canvas.getKeyListeners()
+        map(canvas.removeKeyListener, ckls)
+        canvas.addKeyListener(lEnd)
+        map(canvas.addKeyListener, ckls)
         canvas.addMouseListener(lAdd)
-    imp.show()
-    print "ding!"
-
-class twoWayCircularIterator(object):
-    def __init__(self, l):
-        # l should be a list
-        self.l = l
-        self.n = len(l)
-        self.i = -1
-    def hasNext(self):
-        return self.i < self.n - 1
-    def next(self):
-        self.i += 1
-        if self.i >= self.n:
-            self.i = 0
-        return self.l[self.i]
-    def hasPrev(self):
-        return self.i > 0
-    def prev(self):
-        self.i -= 1
-        if self.i < 0:
-            self.i = self.n - 1
-        return self.l[self.i]
 
 def readPoints(fn):
     # reads and create a table for storing points
@@ -222,9 +191,44 @@ def readPoints(fn):
     f.close()
     return table
 
+# data holder, contains a two way iterator of image paths,
+# and a table for marked points
+class PointMarkerData(object):
+    def __init__(self, imgPaths, pointTable = dict(), pointFile = "points.csv"):
+        # iterator of image paths
+        self.l = imgPaths
+        self.n = len(self.l)
+        self.i = -1
+
+        # table for storing marked points
+        self.table = pointTable
+
+        # file path for points
+        self.fn = pointFile
+    def size(self):
+        return self.n
+    def position(self):
+        return self.i + 1
+    def progress(self):
+        return len(self.table)
+
+    def hasNext(self):
+        return self.i < self.n - 1
+    def next(self):
+        self.i += 1
+        if self.i >= self.n:
+            self.i = 0
+        return self.l[self.i]
+    def hasPrev(self):
+        return self.i > 0
+    def prev(self):
+        self.i -= 1
+        if self.i < 0:
+            self.i = self.n - 1
+        return self.l[self.i]
+
+
 #######################
-HEADER = [['image_name', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3', 'pixel_width', 'unit']]
-NPOINTS = 3
 
 fileChooser = OpenDialog("Point Marker: Choose working directory and file")
 OUTFN = fileChooser.getPath()
@@ -237,11 +241,12 @@ if imgDir:
             if not filename.endswith(".tif"):
                 continue
             imgPaths.append(os.path.join(root, filename))
-imgIt = twoWayCircularIterator(imgPaths)
 
-pointsTable = readPoints(OUTFN)
+pointsTable1 = readPoints(OUTFN)
+
+imgData = PointMarkerData(imgPaths, pointsTable1, OUTFN)
 
 IJ.setTool("multipoint")
 PointRoi.setDefaultSize(3)
 
-prepareNewImage(imgIt, pointsTable)
+prepareNewImage(imgData)
