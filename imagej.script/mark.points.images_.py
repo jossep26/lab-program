@@ -1,11 +1,12 @@
 from ij import IJ, ImagePlus, ImageStack
 from ij.gui import Overlay, Roi, PointRoi, Line, TextRoi
-from ij.gui import ImageWindow, ImageCanvas
+from ij.gui import ImageWindow, ImageCanvas, GUI
 from ij.io import DirectoryChooser, OpenDialog
 from java.awt.event import KeyEvent, KeyAdapter, MouseAdapter
 from java.lang import String
-from java.awt import Color
+from java.awt import Color, Dimension
 from javax.swing import JFrame, JPanel, JLabel, JProgressBar
+from javax.swing import BoxLayout
 import os.path
 import random
 import math
@@ -24,29 +25,33 @@ class ListenToDrawEnd(KeyAdapter):
             return
         # reads global imgData
         drawEnd(imp, imgData, event)
+        win.update()
 
 def drawEnd(imp, imgData, keyEvent):
-    if keyEvent.getKeyCode() == KeyEvent.VK_SPACE:
-        print "space!"
     if keyEvent.getKeyCode() == KeyEvent.VK_BACK_QUOTE:
-        print "save table!"
+        # print "save table!"
         stashPoints(imp, imgData)
         saveToFile(imgData)
     if keyEvent.getKeyCode() == KeyEvent.VK_S:
-        print "save table!"
+        # print "save table!"
         stashPoints(imp, imgData)
         saveToFile(imgData)
         keyEvent.consume()
     if keyEvent.getKeyCode() == KeyEvent.VK_PERIOD:
-        print "next!"
+        # print "next!"
         stashPoints(imp, imgData)
         imp.close()
         prepareNewImage(imgData)
     if keyEvent.getKeyCode() == KeyEvent.VK_COMMA:
-        print "prev!"
+        # print "prev!"
         stashPoints(imp, imgData)
         imp.close()
         prepareNewImage(imgData, 'prev')
+    if keyEvent.getKeyCode() == KeyEvent.VK_TAB:
+        # print "tab! next unmarked"
+        stashPoints(imp, imgData)
+        imp.close()
+        prepareNewImage(imgData, 'unmarked')
 
 class ListenToPointAdd(MouseAdapter):
     def mouseReleased(self, event):
@@ -62,7 +67,7 @@ def drawLines(imp, points=None):
         imp.setRoi(pRoi)
     roi = imp.getRoi()
     pp = roi.getFloatPolygon()
-    print "Added", pp.npoints
+    # print "Added", pp.npoints
     if pp.npoints <= 1:
         # don't draw if only one point
         return
@@ -128,19 +133,21 @@ def saveToFile(imgData):
     for title, points in pointsTable.iteritems():
         entry = [title]
         entry.extend(points)
-        print entry
+        # print entry
         writer.writerow(entry)
     outfile.close()
-    print 'saved!'
+    # print 'saved!'
 
 def prepareNewImage(imgData, direction=None):
     if direction == 'prev':
-        if not imgData.hasPrev():
-            print 'end! back to first'
+        # if not imgData.hasPrev():
+            # print 'end! back to first'
         imgPath = imgData.prev()
+    elif direction == 'unmarked':
+        imgPath = imgData.nextUnmarked()
     else:
-        if not imgData.hasNext():
-            print 'end! to end'
+        # if not imgData.hasNext():
+            # print 'end! to end'
         imgPath = imgData.next()
 
     imp = IJ.openImage(imgPath)
@@ -226,6 +233,105 @@ class PointMarkerData(object):
         if self.i < 0:
             self.i = self.n - 1
         return self.l[self.i]
+    def nextUnmarked(self):
+        path = self.l[self.i]
+        while(self.hasNext()):
+            if os.path.basename(path) not in self.table:
+                break
+            path = self.next()
+        return path
+
+## status window
+class PointMarkerWin(GUI):
+    def __init__(self, imgData):
+        n = imgData.size()
+        win = JFrame("Point Marker Panel")
+        win.setSize(Dimension(350, 400))
+        pan = JPanel()
+        pan.setLayout(BoxLayout(pan, BoxLayout.Y_AXIS))
+        win.getContentPane().add(pan)
+
+        progressPanel = JPanel()
+        progressPanel.setLayout(BoxLayout(progressPanel, BoxLayout.Y_AXIS))
+        positionBar = JProgressBar()
+        positionBar.setMinimum(0)
+        positionBar.setMaximum(n)
+        positionBar.setValue(imgData.position())
+        posText = "Position: " + str(imgData.position())\
+                  + " / " + str(n)
+        positionBar.setString(posText)
+        positionBar.setStringPainted(True)
+        progressPanel.add(positionBar)
+        # print "ding!"
+
+        progressBar = JProgressBar()
+        progressBar.setMinimum(0)
+        progressBar.setMaximum(n)
+        progressBar.setValue(imgData.progress())
+        progText = "Progress: " + str(imgData.progress()) \
+                   + " / " + str(n)
+        progressBar.setString(progText)
+        progressBar.setStringPainted(True)
+        progressPanel.add(progressBar)
+        pan.add(progressPanel)
+
+        helpPanel = JPanel()
+        helpPanel.setLayout(BoxLayout(helpPanel, BoxLayout.Y_AXIS))
+        helpLable = JLabel("<html>Usage: <ul><li>Focus on Image Window</li>\
+                            <li>Select multi-point Tool</li>\
+                            <li>Click to Draw Points</li>\
+                            <li>Drag to Move Points</li>\
+                            <li>\"Alt\" + Click to Erase Points\
+                            </html>")
+        keyLable = JLabel("<html>Keyboard Shortcuts:<br><ul>\
+                            <li>Navigation --- <b><kbd>&lt</kbd></b> and <b><kbd>></kbd></b></li>\
+                            <li>Save --- <b><kbd>S</kbd></b></li>\
+                            <li>Next Unmarked Image --- <b><kbd>TAB</kbd></b></li></ul>\
+                            <b>Please Save Often</b></html>")
+        helpPanel.add(helpLable)
+        helpPanel.add(keyLable)
+        pan.add(helpPanel)
+
+        infoPanel = JPanel()
+        infoPanel.setLayout(BoxLayout(infoPanel, BoxLayout.Y_AXIS))
+        dataPath = imgData.fn
+        dirLabel = JLabel("<html>Dir: " + os.path.dirname(dataPath) + "/<html>")
+        dataFnLabel = JLabel("<html>Points file: " + os.path.basename(dataPath) + "</html>")
+        imgPath = imgData.l[imgData.i]
+        imgLabel = JLabel("<html>Current image: " + os.path.basename(imgPath) + "</html>")
+        infoPanel.add(dirLabel)
+        infoPanel.add(dataFnLabel)
+        infoPanel.add(imgLabel)
+        pan.add(infoPanel)
+
+        win.setVisible(True)
+
+        self.imgData = imgData
+        self.win = win
+        # self.progressPanel = progressPanel
+        self.positionBar = positionBar
+        self.progressBar = progressBar
+        self.imgLabel = imgLabel
+
+    def updatePositionAndProgress(self):
+        positionBar = self.positionBar
+        progressBar = self.progressBar
+        _imgData = self.imgData
+        n = _imgData.size()
+        pos = _imgData.position()
+        pro = _imgData.progress()
+        positionBar.setValue(pos)
+        positionBar.setString("Position: " + str(pos) + " / " + str(n))
+        progressBar.setValue(pro)
+        progressBar.setString("Progress: " + str(pro) + " / " + str(n))
+
+    def updateImgLabel(self):
+        _imgData = self.imgData
+        imgPath = _imgData.l[_imgData.i]
+        self.imgLabel.setText("<html>Current image: " + os.path.basename(imgPath) + "</html>")
+    def update(self):
+        self.updateImgLabel()
+        self.updatePositionAndProgress()
 
 
 #######################
@@ -249,4 +355,5 @@ imgData = PointMarkerData(imgPaths, pointsTable1, OUTFN)
 IJ.setTool("multipoint")
 PointRoi.setDefaultSize(3)
 
+win = PointMarkerWin(imgData)
 prepareNewImage(imgData)
