@@ -138,9 +138,9 @@ def stashPoints(imp, imgData):
             points.append(pp.ypoints[i])
     points.append(cal.pixelWidth)
     points.append(cal.getUnit())
-    angle = angle(pp.xpoints, pp.ypoints)
-    points.append(angle)
-    points.append(angle * 180 / math.pi)
+    ag = angle(pp.xpoints, pp.ypoints)
+    points.append(ag)
+    points.append(ag * 180 / math.pi)
 
     imgData.table[imp.getTitle()] = points
 
