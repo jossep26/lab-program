@@ -115,7 +115,7 @@ def angle(xs, ys):
     x1 = xs[1] - xs[0]
     y1 = ys[1] - ys[0]
     x2 = xs[2] - xs[0]
-    y2 = xs[2] - xs[0]
+    y2 = ys[2] - ys[0]
 
     inner_product = x1 * x2 + y1 * y2
     len1 = math.hypot(x1, y1)
