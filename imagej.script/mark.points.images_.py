@@ -335,7 +335,8 @@ class PointMarkerWin(object):
                             <li>Drag to Move Points</li>\
                             <li>\"Alt\" + Click to Erase Points</li>\
                             <li>Optional: Customize Calibration Above\
-                                (won't be written to images)</li>\
+                                 and Refresh Images\
+                                (won't be written to files)</li>\
                             </html>")
         helpLable.setBorder(BorderFactory.createTitledBorder("Usage"))
         keyTagOpen = "<span style=\"background-color: #FFFFFF\"><b><kbd>"
