@@ -5,7 +5,7 @@ from ij.io import DirectoryChooser, OpenDialog
 from java.awt.event import KeyEvent, KeyAdapter, MouseAdapter
 from java.lang import String
 from java.awt import Color, Dimension
-from javax.swing import JFrame, JPanel, JLabel, JProgressBar, JDialog
+from javax.swing import JFrame, JPanel, JLabel, JProgressBar, JDialog, JTextField
 from javax.swing import BoxLayout
 
 from datetime import datetime
@@ -27,7 +27,7 @@ class ListenToDrawEnd(KeyAdapter):
             return
         # reads global imgData
         drawEnd(imp, imgData, event)
-        win.update()
+        pmWin.update()
 
 def drawEnd(imp, imgData, keyEvent):
     if keyEvent.getKeyCode() == KeyEvent.VK_BACK_QUOTE:
@@ -158,7 +158,7 @@ def saveToFile(imgData):
         writer.writerow(entry)
     outfile.close()
     # print 'saved!'
-    win.flashSaveMessage()
+    pmWin.flashSaveMessage()
 
 def prepareNewImage(imgData, direction=None):
     if direction == 'prev':
@@ -173,6 +173,18 @@ def prepareNewImage(imgData, direction=None):
         imgPath = imgData.next()
 
     imp = IJ.openImage(imgPath)
+
+    try:
+        newUnit = pmWin.unitText.getText()
+        newPixelSize = float(pmWin.pixelSizeText.getText())
+    except ValueError:
+        pass
+    else:
+        cal = imp.getCalibration()
+        cal.setUnit(newUnit)
+        cal.pixelWidth = newPixelSize
+        cal.pixelHeight = cal.pixelWidth
+
     imp.show()
     pointsTable = imgData.table
     if os.path.basename(imgPath) in pointsTable:
@@ -280,7 +292,6 @@ class PointMarkerWin(object):
         positionBar.setMaximum(n)
         positionBar.setStringPainted(True)
         progressPanel.add(positionBar)
-        # print "ding!"
 
         progressBar = JProgressBar()
         progressBar.setMinimum(0)
@@ -289,10 +300,12 @@ class PointMarkerWin(object):
         progressPanel.add(progressBar)
         pan.add(progressPanel)
 
-        saveMessagePanel = JPanel()
+        savePanel = JPanel()
+        savePanel.setLayout(BoxLayout(savePanel, BoxLayout.Y_AXIS))
         saveMessageLabel = JLabel("<html><u>Save Often</u></html>")
-        saveMessagePanel.add(saveMessageLabel)
-        pan.add(saveMessageLabel)
+        savePanel.add(saveMessageLabel)
+        pan.add(savePanel)
+        # pan.add(saveMessageLabel)
 
         helpPanel = JPanel()
         helpPanel.setLayout(BoxLayout(helpPanel, BoxLayout.Y_AXIS))
@@ -318,6 +331,16 @@ class PointMarkerWin(object):
         helpPanel.add(keyLable)
         pan.add(helpPanel)
 
+        calPanel = JPanel()
+        calPanel.setLayout(BoxLayout(calPanel, BoxLayout.X_AXIS))
+        pixelSizeText = JTextField(12)
+        unitText = JTextField(10)
+        calPanel.add(JLabel("Pixel Size:"))
+        calPanel.add(pixelSizeText)
+        calPanel.add(JLabel("Unit:"))
+        calPanel.add(unitText)
+        pan.add(calPanel)
+
         infoPanel = JPanel()
         infoPanel.setLayout(BoxLayout(infoPanel, BoxLayout.Y_AXIS))
         dataPath = imgData.fn
@@ -340,6 +363,8 @@ class PointMarkerWin(object):
         self.progressBar = progressBar
         self.saveMessageLabel = saveMessageLabel
         self.imgLabel = imgLabel
+        self.pixelSizeText = pixelSizeText
+        self.unitText = unitText
         self.update()
 
     def updatePositionAndProgress(self):
@@ -369,7 +394,7 @@ class PointMarkerWin(object):
 
 #######################
 def run():
-    global win
+    global pmWin
     global imgData
     helpText = "This is Point Marker, " + \
                "a program for marking points in images.\n\n" + \
@@ -396,8 +421,8 @@ def run():
     IJ.setTool("multipoint")
     PointRoi.setDefaultSize(3)
 
-    win = PointMarkerWin(imgData)
-    win.win.setLocation(IJ.getInstance().getLocation())
+    pmWin = PointMarkerWin(imgData)
+    pmWin.win.setLocation(IJ.getInstance().getLocation())
     prepareNewImage(imgData)
 
 ##
