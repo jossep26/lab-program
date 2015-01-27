@@ -1,16 +1,17 @@
 from ij import IJ, ImagePlus, ImageStack
 from ij.gui import Overlay, Roi, PointRoi, Line, TextRoi
-from ij.gui import ImageWindow, ImageCanvas, GUI
+from ij.gui import ImageWindow, ImageCanvas, MessageDialog
 from ij.io import DirectoryChooser, OpenDialog
 from java.awt.event import KeyEvent, KeyAdapter, MouseAdapter
 from java.lang import String
 from java.awt import Color, Dimension
-from javax.swing import JFrame, JPanel, JLabel, JProgressBar
+from javax.swing import JFrame, JPanel, JLabel, JProgressBar, JDialog
 from javax.swing import BoxLayout
 import os.path
 import random
 import math
 import csv
+from datetime import datetime
 
 class ListenToDrawEnd(KeyAdapter):
     # def __init__(self, imgData):
@@ -137,6 +138,7 @@ def saveToFile(imgData):
         writer.writerow(entry)
     outfile.close()
     # print 'saved!'
+    win.flashSaveMessage()
 
 def prepareNewImage(imgData, direction=None):
     if direction == 'prev':
@@ -242,11 +244,11 @@ class PointMarkerData(object):
         return path
 
 ## status window
-class PointMarkerWin(GUI):
+class PointMarkerWin(object):
     def __init__(self, imgData):
         n = imgData.size()
         win = JFrame("Point Marker Panel")
-        win.setSize(Dimension(350, 400))
+        win.setSize(Dimension(350, 450))
         pan = JPanel()
         pan.setLayout(BoxLayout(pan, BoxLayout.Y_AXIS))
         win.getContentPane().add(pan)
@@ -256,10 +258,6 @@ class PointMarkerWin(GUI):
         positionBar = JProgressBar()
         positionBar.setMinimum(0)
         positionBar.setMaximum(n)
-        positionBar.setValue(imgData.position())
-        posText = "Position: " + str(imgData.position())\
-                  + " / " + str(n)
-        positionBar.setString(posText)
         positionBar.setStringPainted(True)
         progressPanel.add(positionBar)
         # print "ding!"
@@ -267,13 +265,14 @@ class PointMarkerWin(GUI):
         progressBar = JProgressBar()
         progressBar.setMinimum(0)
         progressBar.setMaximum(n)
-        progressBar.setValue(imgData.progress())
-        progText = "Progress: " + str(imgData.progress()) \
-                   + " / " + str(n)
-        progressBar.setString(progText)
         progressBar.setStringPainted(True)
         progressPanel.add(progressBar)
         pan.add(progressPanel)
+
+        saveMessagePanel = JPanel()
+        saveMessageLabel = JLabel("<html><b>Please Save Often</b></html>")
+        saveMessagePanel.add(saveMessageLabel)
+        pan.add(saveMessageLabel)
 
         helpPanel = JPanel()
         helpPanel.setLayout(BoxLayout(helpPanel, BoxLayout.Y_AXIS))
@@ -283,11 +282,15 @@ class PointMarkerWin(GUI):
                             <li>Drag to Move Points</li>\
                             <li>\"Alt\" + Click to Erase Points\
                             </html>")
+        keyTagOpen = "<span style=\"background-color: #FFFFFF\"><b><kbd>"
+        keyTagClose = "</kbd></b></span>"
         keyLable = JLabel("<html>Keyboard Shortcuts:<br><ul>\
-                            <li>Navigation --- <b><kbd>&lt</kbd></b> and <b><kbd>></kbd></b></li>\
-                            <li>Save --- <b><kbd>S</kbd></b></li>\
-                            <li>Next Unmarked Image --- <b><kbd>TAB</kbd></b></li></ul>\
-                            <b>Please Save Often</b></html>")
+                            <li>Next Image --- " + keyTagOpen + "&lt" + keyTagClose + "</li>\
+                            <li>Previous Image --- " + keyTagOpen + ">" + keyTagClose + "</li>\
+                            <li>Save --- " + keyTagOpen + "`" + keyTagClose + " (upper-left to TAB key)</li>\
+                            <li>Next Unmarked Image --- " + keyTagOpen + "TAB" +\
+                                keyTagClose + "</li></ul>\
+                            </html>")
         helpPanel.add(helpLable)
         helpPanel.add(keyLable)
         pan.add(helpPanel)
@@ -295,10 +298,9 @@ class PointMarkerWin(GUI):
         infoPanel = JPanel()
         infoPanel.setLayout(BoxLayout(infoPanel, BoxLayout.Y_AXIS))
         dataPath = imgData.fn
-        dirLabel = JLabel("<html>Dir: " + os.path.dirname(dataPath) + "/<html>")
-        dataFnLabel = JLabel("<html>Points file: " + os.path.basename(dataPath) + "</html>")
-        imgPath = imgData.l[imgData.i]
-        imgLabel = JLabel("<html>Current image: " + os.path.basename(imgPath) + "</html>")
+        dirLabel = JLabel("<html>Working Dir: <samp>" + os.path.dirname(dataPath) + "</samp></html>")
+        dataFnLabel = JLabel("<html>Points file: <samp>" + os.path.basename(dataPath) + "</samp></html>")
+        imgLabel = JLabel()
         infoPanel.add(dirLabel)
         infoPanel.add(dataFnLabel)
         infoPanel.add(imgLabel)
@@ -311,7 +313,9 @@ class PointMarkerWin(GUI):
         # self.progressPanel = progressPanel
         self.positionBar = positionBar
         self.progressBar = progressBar
+        self.saveMessageLabel = saveMessageLabel
         self.imgLabel = imgLabel
+        self.update()
 
     def updatePositionAndProgress(self):
         positionBar = self.positionBar
@@ -328,32 +332,46 @@ class PointMarkerWin(GUI):
     def updateImgLabel(self):
         _imgData = self.imgData
         imgPath = _imgData.l[_imgData.i]
-        self.imgLabel.setText("<html>Current image: " + os.path.basename(imgPath) + "</html>")
+        self.imgLabel.setText("<html>Current image:<br><samp>" + os.path.basename(imgPath) + "</samp></html>")
     def update(self):
         self.updateImgLabel()
         self.updatePositionAndProgress()
-
+    def flashSaveMessage(self):
+        sl = self.saveMessageLabel
+        sl.setText("<html>Saved To File at " + str(datetime.now()) + "</html>")
 
 #######################
+def run():
+    global win
+    global imgData
+    helpText = "This is Point Marker, a program for marking points in images.\n\n" + \
+                ">> Select a file for storing points infomation.\n" + \
+                ">> TIF-Images within the same directory will be auto-loaded."
+    MessageDialog(IJ.getInstance(),"Point Marker", helpText)
 
-fileChooser = OpenDialog("Point Marker: Choose working directory and file")
-OUTFN = fileChooser.getPath()
+    fileChooser = OpenDialog("Point Marker: Choose working directory and file")
+    OUTFN = fileChooser.getPath()
+    imgDir = fileChooser.getDirectory()
+    if not imgDir:  return
+    imgPaths = []
+    if imgDir:
+        for root, directories, filenames in os.walk(imgDir):
+            for filename in filenames:
+                if not filename.endswith(".tif"):
+                    continue
+                imgPaths.append(os.path.join(root, filename))
 
-imgDir = fileChooser.getDirectory()
-imgPaths = []
-if imgDir:
-    for root, directories, filenames in os.walk(imgDir):
-        for filename in filenames:
-            if not filename.endswith(".tif"):
-                continue
-            imgPaths.append(os.path.join(root, filename))
+    pointsTable1 = readPoints(OUTFN)
 
-pointsTable1 = readPoints(OUTFN)
+    imgData = PointMarkerData(imgPaths, pointsTable1, OUTFN)
 
-imgData = PointMarkerData(imgPaths, pointsTable1, OUTFN)
+    IJ.setTool("multipoint")
+    PointRoi.setDefaultSize(3)
 
-IJ.setTool("multipoint")
-PointRoi.setDefaultSize(3)
+    win = PointMarkerWin(imgData)
+    win.win.setLocation(IJ.getInstance().getLocation())
+    prepareNewImage(imgData)
 
-win = PointMarkerWin(imgData)
-prepareNewImage(imgData)
+##
+
+run()
