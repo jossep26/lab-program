@@ -138,7 +138,9 @@ def stashPoints(imp, imgData):
             points.append(pp.ypoints[i])
     points.append(cal.pixelWidth)
     points.append(cal.getUnit())
-    points.append(angle(pp.xpoints, pp.ypoints))
+    angle = angle(pp.xpoints, pp.ypoints)
+    points.append(angle)
+    points.append(angle * 180 / math.pi)
 
     imgData.table[imp.getTitle()] = points
 
@@ -147,7 +149,7 @@ def saveToFile(imgData):
     outfile = open(imgData.fn,'wb')
     writer = csv.writer(outfile)
     headerRow = ['image_name', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3', \
-                 'pixel_width', 'unit', 'angle_radian']
+                 'pixel_width', 'unit', 'angle_radian', 'angle_degree']
     writer.writerow(headerRow)
     for title, points in pointsTable.iteritems():
         entry = [title]
