@@ -7,11 +7,12 @@ from java.lang import String
 from java.awt import Color, Dimension
 from javax.swing import JFrame, JPanel, JLabel, JProgressBar, JDialog
 from javax.swing import BoxLayout
+
+from datetime import datetime
 import os.path
 import random
 import math
 import csv
-from datetime import datetime
 
 class ListenToDrawEnd(KeyAdapter):
     # def __init__(self, imgData):
@@ -106,6 +107,21 @@ def drawLines(imp, points=None):
     imp.setOverlay(ol)
     imp.updateAndDraw()
 
+def angle(xs, ys):
+    # helper function to calculate angle between the 3 points
+    if len(xs) != 3 or len(xs) != len(ys):
+        return 0
+    # calculate vectors
+    x1 = xs[1] - xs[0]
+    y1 = ys[1] - ys[0]
+    x2 = xs[2] - xs[0]
+    y2 = xs[2] - xs[0]
+
+    inner_product = x1 * x2 + y1 * y2
+    len1 = math.hypot(x1, y1)
+    len2 = math.hypot(x2, y2)
+    return math.acos(inner_product / (len1 * len2))
+
 def stashPoints(imp, imgData):
     # store/update points in imgData
     # only 3 points
@@ -122,7 +138,7 @@ def stashPoints(imp, imgData):
             points.append(pp.ypoints[i])
     points.append(cal.pixelWidth)
     points.append(cal.getUnit())
-    points.append(0)
+    points.append(angle(pp.xpoints, pp.ypoints))
 
     imgData.table[imp.getTitle()] = points
 
@@ -131,7 +147,7 @@ def saveToFile(imgData):
     outfile = open(imgData.fn,'wb')
     writer = csv.writer(outfile)
     headerRow = ['image_name', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3', \
-                 'pixel_width', 'unit', 'angle']
+                 'pixel_width', 'unit', 'angle_radian']
     writer.writerow(headerRow)
     for title, points in pointsTable.iteritems():
         entry = [title]
@@ -184,7 +200,7 @@ def prepareNewImage(imgData, direction=None):
 
 def readPoints(fn):
     # reads and create a table for storing points
-    #       key: image title
+    #       key: image title, 1st column
     #       value: points and pixel width
     # note: no validation on file input, 
     #       ok only if no direct file modification
@@ -357,7 +373,7 @@ def run():
                "a program for marking points in images.\n\n" + \
                ">> Select a file for storing points infomation.\n" + \
                ">> TIF-Images within the same directory will be auto-loaded."
-    MessageDialog(IJ.getInstance(),"Point Marker", helpText)
+    MessageDialog(IJ.getInstance(),"Point Marker Guide", helpText)
 
     fileChooser = OpenDialog("Point Marker: Choose working directory and file")
     outfilePath = fileChooser.getPath()
