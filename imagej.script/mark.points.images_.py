@@ -4,9 +4,9 @@ from ij.gui import ImageWindow, ImageCanvas, MessageDialog
 from ij.io import DirectoryChooser, OpenDialog
 from java.awt.event import KeyEvent, KeyAdapter, MouseAdapter
 from java.lang import String
-from java.awt import Color, Dimension
+from java.awt import Color, Dimension, Component
 from javax.swing import JFrame, JPanel, JLabel, JProgressBar, JDialog, JTextField
-from javax.swing import BoxLayout
+from javax.swing import BoxLayout, Box, BorderFactory
 
 from datetime import datetime
 import os.path
@@ -280,7 +280,7 @@ class PointMarkerWin(object):
     def __init__(self, imgData):
         n = imgData.size()
         win = JFrame("Point Marker Panel")
-        win.setSize(Dimension(350, 450))
+        win.setSize(Dimension(350, 510))
         pan = JPanel()
         pan.setLayout(BoxLayout(pan, BoxLayout.Y_AXIS))
         win.getContentPane().add(pan)
@@ -291,6 +291,7 @@ class PointMarkerWin(object):
         positionBar.setMinimum(0)
         positionBar.setMaximum(n)
         positionBar.setStringPainted(True)
+        progressPanel.add(Box.createGlue())
         progressPanel.add(positionBar)
 
         progressBar = JProgressBar()
@@ -298,26 +299,46 @@ class PointMarkerWin(object):
         progressBar.setMaximum(n)
         progressBar.setStringPainted(True)
         progressPanel.add(progressBar)
+        progressPanel.setBorder(BorderFactory.createEmptyBorder(0,10,0,10))
         pan.add(progressPanel)
+
+        calPanel = JPanel()
+        calPanel.setLayout(BoxLayout(calPanel, BoxLayout.X_AXIS))
+        pixelSizeText = JTextField(12)
+        pixelSizeText.setHorizontalAlignment(JTextField.RIGHT)
+        pixelSizeText.setMaximumSize(pixelSizeText.getPreferredSize())
+        unitText = JTextField(10)
+        unitText.setMaximumSize(unitText.getPreferredSize())
+        calPanel.add(JLabel("Pixel Size:"))
+        calPanel.add(pixelSizeText)
+        calPanel.add(JLabel("Unit:"))
+        calPanel.add(unitText)
+        calPanel.setAlignmentX(Component.CENTER_ALIGNMENT)
+        calPanel.setBorder(BorderFactory.createEmptyBorder(0,10,0,10))
+        pan.add(calPanel)
 
         savePanel = JPanel()
         savePanel.setLayout(BoxLayout(savePanel, BoxLayout.Y_AXIS))
         saveMessageLabel = JLabel("<html><u>Save Often</u></html>")
         savePanel.add(saveMessageLabel)
+        savePanel.setAlignmentX(Component.CENTER_ALIGNMENT)
+        savePanel.setBorder(BorderFactory.createEmptyBorder(0,10,0,10))
         pan.add(savePanel)
         # pan.add(saveMessageLabel)
 
         helpPanel = JPanel()
         helpPanel.setLayout(BoxLayout(helpPanel, BoxLayout.Y_AXIS))
-        helpLable = JLabel("<html>Usage: <ul><li>Focus on Image Window</li>\
+        helpLable = JLabel("<html><ul>\
+                            <li>Focus on Image Window</li>\
                             <li>Select multi-point Tool</li>\
                             <li>Click to Draw Points</li>\
                             <li>Drag to Move Points</li>\
                             <li>\"Alt\" + Click to Erase Points\
                             </html>")
+        helpLable.setBorder(BorderFactory.createTitledBorder("Usage"))
         keyTagOpen = "<span style=\"background-color: #FFFFFF\"><b><kbd>"
         keyTagClose = "</kbd></b></span>"
-        keyLable = JLabel("<html>Keyboard Shortcuts:<br><ul>\
+        keyLable = JLabel("<html><ul>\
                             <li>Next Image --- " + keyTagOpen + "&lt" + \
                                 keyTagClose + "</li>\
                             <li>Previous Image --- " + keyTagOpen + ">" + \
@@ -327,31 +348,21 @@ class PointMarkerWin(object):
                             <li>Next Unmarked Image --- " + keyTagOpen + \
                                 "TAB" + keyTagClose + "</li></ul>\
                             </html>")
+        keyLable.setBorder(BorderFactory.createTitledBorder("Keyboard Shortcuts"))
         helpPanel.add(helpLable)
         helpPanel.add(keyLable)
+        helpPanel.setAlignmentX(Component.CENTER_ALIGNMENT)
+        helpPanel.setBorder(BorderFactory.createEmptyBorder(0,10,0,10))
         pan.add(helpPanel)
 
-        calPanel = JPanel()
-        calPanel.setLayout(BoxLayout(calPanel, BoxLayout.X_AXIS))
-        pixelSizeText = JTextField(12)
-        unitText = JTextField(10)
-        calPanel.add(JLabel("Pixel Size:"))
-        calPanel.add(pixelSizeText)
-        calPanel.add(JLabel("Unit:"))
-        calPanel.add(unitText)
-        pan.add(calPanel)
-
+        # pan.add(Box.createRigidArea(Dimension(0, 10)))
         infoPanel = JPanel()
         infoPanel.setLayout(BoxLayout(infoPanel, BoxLayout.Y_AXIS))
-        dataPath = imgData.fn
-        dirLabel = JLabel("<html>Working Dir: <samp>" + \
-                           os.path.dirname(dataPath) + "</samp></html>")
-        dataFnLabel = JLabel("<html>Points file: <samp>" + \
-                             os.path.basename(dataPath) + "</samp></html>")
-        imgLabel = JLabel()
-        infoPanel.add(dirLabel)
-        infoPanel.add(dataFnLabel)
-        infoPanel.add(imgLabel)
+        infoLabel = JLabel()
+        infoLabel.setBorder(BorderFactory.createTitledBorder("Project Info"))
+        infoPanel.add(infoLabel)
+        infoPanel.setAlignmentX(Component.CENTER_ALIGNMENT)
+        infoPanel.setBorder(BorderFactory.createEmptyBorder(0,10,0,10))
         pan.add(infoPanel)
 
         win.setVisible(True)
@@ -362,7 +373,7 @@ class PointMarkerWin(object):
         self.positionBar = positionBar
         self.progressBar = progressBar
         self.saveMessageLabel = saveMessageLabel
-        self.imgLabel = imgLabel
+        self.infoLabel = infoLabel
         self.pixelSizeText = pixelSizeText
         self.unitText = unitText
         self.update()
@@ -379,13 +390,18 @@ class PointMarkerWin(object):
         progressBar.setValue(pro)
         progressBar.setString("Progress: " + str(pro) + " / " + str(n))
 
-    def updateImgLabel(self):
+    def updateInfoLabel(self):
         _imgData = self.imgData
         imgPath = _imgData.l[_imgData.i]
-        self.imgLabel.setText("<html>Current image:<br><samp>" + \
-                              os.path.basename(imgPath) + "</samp></html>")
+        dirn = os.path.dirname(_imgData.fn)
+        fn = os.path.basename(_imgData.fn)
+        self.infoLabel.setText("<html><ul style=\"list-style-type: none\">" +\
+                          "<li>Working Dir: <samp>" + dirn + "</samp></li>" +\
+                          "<li>Points file: <samp>" + fn + "</samp></li>" + \
+                          "<li>Current image:<br><samp>" + \
+                              os.path.basename(imgPath) + "</samp></li></html>")
     def update(self):
-        self.updateImgLabel()
+        self.updateInfoLabel()
         self.updatePositionAndProgress()
     def flashSaveMessage(self):
         sl = self.saveMessageLabel
