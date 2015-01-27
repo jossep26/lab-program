@@ -122,6 +122,7 @@ def stashPoints(imp, imgData):
             points.append(pp.ypoints[i])
     points.append(cal.pixelWidth)
     points.append(cal.getUnit())
+    points.append(0)
 
     imgData.table[imp.getTitle()] = points
 
@@ -129,7 +130,8 @@ def saveToFile(imgData):
     pointsTable = imgData.table
     outfile = open(imgData.fn,'wb')
     writer = csv.writer(outfile)
-    headerRow = ['image_name', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3', 'pixel_width', 'unit']
+    headerRow = ['image_name', 'x1', 'y1', 'x2', 'y2', 'x3', 'y3', \
+                 'pixel_width', 'unit', 'angle']
     writer.writerow(headerRow)
     for title, points in pointsTable.iteritems():
         entry = [title]
@@ -203,7 +205,7 @@ def readPoints(fn):
 # data holder, contains a two way iterator of image paths,
 # and a table for marked points
 class PointMarkerData(object):
-    def __init__(self, imgPaths, pointTable = dict(), pointFile = "points.csv"):
+    def __init__(self, imgPaths, pointFilePath, pointTable = dict()):
         # iterator of image paths
         self.l = imgPaths
         self.n = len(self.l)
@@ -213,7 +215,7 @@ class PointMarkerData(object):
         self.table = pointTable
 
         # file path for points
-        self.fn = pointFile
+        self.fn = pointFilePath
     def size(self):
         return self.n
     def position(self):
@@ -270,7 +272,7 @@ class PointMarkerWin(object):
         pan.add(progressPanel)
 
         saveMessagePanel = JPanel()
-        saveMessageLabel = JLabel("<html><b>Please Save Often</b></html>")
+        saveMessageLabel = JLabel("<html><u>Save Often</u></html>")
         saveMessagePanel.add(saveMessageLabel)
         pan.add(saveMessageLabel)
 
@@ -285,11 +287,14 @@ class PointMarkerWin(object):
         keyTagOpen = "<span style=\"background-color: #FFFFFF\"><b><kbd>"
         keyTagClose = "</kbd></b></span>"
         keyLable = JLabel("<html>Keyboard Shortcuts:<br><ul>\
-                            <li>Next Image --- " + keyTagOpen + "&lt" + keyTagClose + "</li>\
-                            <li>Previous Image --- " + keyTagOpen + ">" + keyTagClose + "</li>\
-                            <li>Save --- " + keyTagOpen + "`" + keyTagClose + " (upper-left to TAB key)</li>\
-                            <li>Next Unmarked Image --- " + keyTagOpen + "TAB" +\
-                                keyTagClose + "</li></ul>\
+                            <li>Next Image --- " + keyTagOpen + "&lt" + \
+                                keyTagClose + "</li>\
+                            <li>Previous Image --- " + keyTagOpen + ">" + \
+                                keyTagClose + "</li>\
+                            <li>Save --- " + keyTagOpen + "`" + keyTagClose + \
+                                " (upper-left to TAB key)</li>\
+                            <li>Next Unmarked Image --- " + keyTagOpen + \
+                                "TAB" + keyTagClose + "</li></ul>\
                             </html>")
         helpPanel.add(helpLable)
         helpPanel.add(keyLable)
@@ -298,8 +303,10 @@ class PointMarkerWin(object):
         infoPanel = JPanel()
         infoPanel.setLayout(BoxLayout(infoPanel, BoxLayout.Y_AXIS))
         dataPath = imgData.fn
-        dirLabel = JLabel("<html>Working Dir: <samp>" + os.path.dirname(dataPath) + "</samp></html>")
-        dataFnLabel = JLabel("<html>Points file: <samp>" + os.path.basename(dataPath) + "</samp></html>")
+        dirLabel = JLabel("<html>Working Dir: <samp>" + \
+                           os.path.dirname(dataPath) + "</samp></html>")
+        dataFnLabel = JLabel("<html>Points file: <samp>" + \
+                             os.path.basename(dataPath) + "</samp></html>")
         imgLabel = JLabel()
         infoPanel.add(dirLabel)
         infoPanel.add(dataFnLabel)
@@ -332,25 +339,28 @@ class PointMarkerWin(object):
     def updateImgLabel(self):
         _imgData = self.imgData
         imgPath = _imgData.l[_imgData.i]
-        self.imgLabel.setText("<html>Current image:<br><samp>" + os.path.basename(imgPath) + "</samp></html>")
+        self.imgLabel.setText("<html>Current image:<br><samp>" + \
+                              os.path.basename(imgPath) + "</samp></html>")
     def update(self):
         self.updateImgLabel()
         self.updatePositionAndProgress()
     def flashSaveMessage(self):
         sl = self.saveMessageLabel
-        sl.setText("<html>Saved To File at " + str(datetime.now()) + "</html>")
+        sl.setText("<html><u>Save Often</u>: \
+                    Saved " + str(datetime.now()) + "</html>")
 
 #######################
 def run():
     global win
     global imgData
-    helpText = "This is Point Marker, a program for marking points in images.\n\n" + \
-                ">> Select a file for storing points infomation.\n" + \
-                ">> TIF-Images within the same directory will be auto-loaded."
+    helpText = "This is Point Marker, " + \
+               "a program for marking points in images.\n\n" + \
+               ">> Select a file for storing points infomation.\n" + \
+               ">> TIF-Images within the same directory will be auto-loaded."
     MessageDialog(IJ.getInstance(),"Point Marker", helpText)
 
     fileChooser = OpenDialog("Point Marker: Choose working directory and file")
-    OUTFN = fileChooser.getPath()
+    outfilePath = fileChooser.getPath()
     imgDir = fileChooser.getDirectory()
     if not imgDir:  return
     imgPaths = []
@@ -361,9 +371,9 @@ def run():
                     continue
                 imgPaths.append(os.path.join(root, filename))
 
-    pointsTable1 = readPoints(OUTFN)
+    pointsTable1 = readPoints(outfilePath)
 
-    imgData = PointMarkerData(imgPaths, pointsTable1, OUTFN)
+    imgData = PointMarkerData(imgPaths, outfilePath, pointsTable1)
 
     IJ.setTool("multipoint")
     PointRoi.setDefaultSize(3)
@@ -373,5 +383,4 @@ def run():
     prepareNewImage(imgData)
 
 ##
-
 run()
