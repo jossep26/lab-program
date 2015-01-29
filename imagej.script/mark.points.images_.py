@@ -280,7 +280,8 @@ class PointMarkerWin(object):
     def __init__(self, imgData):
         n = imgData.size()
         win = JFrame("Point Marker Panel")
-        win.setSize(Dimension(350, 510))
+        win.setPreferredSize(Dimension(350, 590))
+        win.setSize(win.getPreferredSize())
         pan = JPanel()
         pan.setLayout(BoxLayout(pan, BoxLayout.Y_AXIS))
         win.getContentPane().add(pan)
@@ -302,21 +303,7 @@ class PointMarkerWin(object):
         progressPanel.setBorder(BorderFactory.createEmptyBorder(0,10,0,10))
         pan.add(progressPanel)
 
-        calPanel = JPanel()
-        calPanel.setLayout(BoxLayout(calPanel, BoxLayout.X_AXIS))
-        pixelSizeText = JTextField(12)
-        pixelSizeText.setHorizontalAlignment(JTextField.RIGHT)
-        pixelSizeText.setMaximumSize(pixelSizeText.getPreferredSize())
-        unitText = JTextField(10)
-        unitText.setMaximumSize(unitText.getPreferredSize())
-        calPanel.add(JLabel("Pixel Size:"))
-        calPanel.add(pixelSizeText)
-        calPanel.add(JLabel("Unit:"))
-        calPanel.add(unitText)
-        calPanel.setAlignmentX(Component.CENTER_ALIGNMENT)
-        calPanel.setBorder(BorderFactory.createEmptyBorder(0,10,0,10))
-        pan.add(calPanel)
-
+        pan.add(Box.createRigidArea(Dimension(5,5)))
         savePanel = JPanel()
         savePanel.setLayout(BoxLayout(savePanel, BoxLayout.Y_AXIS))
         saveMessageLabel = JLabel("<html><u>Save Often</u></html>")
@@ -326,6 +313,28 @@ class PointMarkerWin(object):
         pan.add(savePanel)
         # pan.add(saveMessageLabel)
 
+        pan.add(Box.createRigidArea(Dimension(5,5)))
+        calPanel = JPanel()
+        calPanel.setLayout(BoxLayout(calPanel, BoxLayout.Y_AXIS))
+        calPanelIn = JPanel()
+        calPanelIn.setLayout(BoxLayout(calPanelIn, BoxLayout.X_AXIS))
+        pixelSizeText = JTextField(12)
+        pixelSizeText.setHorizontalAlignment(JTextField.RIGHT)
+        # pixelSizeText.setMaximumSize(pixelSizeText.getPreferredSize())
+        unitText = JTextField(10)
+        # unitText.setMaximumSize(unitText.getPreferredSize())
+        pixelSizeText.setText("Enter Pixel Size Here")
+        calPanelIn.add(pixelSizeText)
+        unitText.setText("Unit")
+        calPanelIn.add(unitText)
+        calPanelIn.setAlignmentX(Component.CENTER_ALIGNMENT)
+        calPanelIn.setBorder(BorderFactory.createTitledBorder("Custom Calibration"))
+        calPanel.add(calPanelIn)
+        calPanelIn.setAlignmentX(Component.CENTER_ALIGNMENT)
+        calPanel.setBorder(BorderFactory.createEmptyBorder(0,10,0,10))
+        pan.add(calPanel)
+
+        pan.add(Box.createRigidArea(Dimension(5,5)))
         helpPanel = JPanel()
         helpPanel.setLayout(BoxLayout(helpPanel, BoxLayout.Y_AXIS))
         helpLable = JLabel("<html><ul>\
@@ -417,7 +426,7 @@ def run():
     global imgData
     helpText = "This is Point Marker, " + \
                "a program for marking points in images.\n\n" + \
-               ">> Select a file for storing points infomation.\n" + \
+               ">> Press OK to Select a file for storing points infomation.\n"+\
                ">> TIF-Images within the same directory will be auto-loaded."
     MessageDialog(IJ.getInstance(),"Point Marker Guide", helpText)
 
