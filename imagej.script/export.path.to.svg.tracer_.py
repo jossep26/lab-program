@@ -1,5 +1,6 @@
 import re
 import os
+import csv
 from tracing import PathAndFillManager
 from ij.measure import Calibration
 from ij.io import DirectoryChooser
@@ -39,6 +40,12 @@ def toSvgString_polyline(path):
     s = s + "</svg>\n"
     return s
 
+def toListOfPoints(path):
+    l = []
+    for i in xrange(path.size()):
+        l.append([path.getXUnscaled(i), path.getYUnscaled(i)])
+    return l
+
 ##
 def run():
     helpText = "This program will batch convert .swc files to " + \
@@ -77,6 +84,12 @@ def run():
 
             f = open(swc_file + "-path.svg", "wb")
             f.write(toSvgString_path(path))
+            f.close()
+
+            f = open(swc_file + "-points.csv",'wb')
+            writer = csv.writer(f)
+            writer.writerow(["x", "y"])
+            writer.writerows(toListOfPoints(path))
             f.close()
 
 ##############
