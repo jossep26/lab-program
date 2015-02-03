@@ -221,8 +221,8 @@ readPathsAsNormalizedDf <- function(dir="")
     {
         fn <- flist[iFile]
         # get info from file name
-        neuronId <- str_extract(fn, "[0-9][0-9][0-9]")
-        neuriteType <- str_extract(str_extract(fn, "[dv][.]swc"), "[dv]")
+        neuronId <- str_extract(basename(fn), "[0-9][0-9][0-9]")
+        neuriteType <- str_extract(str_extract(basename(fn), "[dv][.]swc"), "[dv]")
         points <- readPointsCsv(fn)
         if (!is.null(points))
         {
@@ -322,6 +322,16 @@ outfn <- file.path(dir, "out.pdf")
 
 # p <- plotPathsDV(dir=dir)
 p <- plotPathsAll(dir=dir)
+PIXEL_SIZE <- 0.53763
+p <- p + scale_x_continuous(breaks=seq(-50, 250, 50)/PIXEL_SIZE, labels=seq(-50, 250, 50))
+p <- p + scale_y_continuous(breaks=seq(-250, 350, 50)/PIXEL_SIZE, labels=seq(-250, 350, 50))
+p <- p + theme_bw()
+p <- p + theme(
+                axis.text = element_text(size=16),
+                panel.border = element_blank(),
+                panel.grid.major = element_blank(),
+                panel.grid.minor = element_blank()
+                )
 print(p)
 
 pdf(outfn, width=10, height=10)
