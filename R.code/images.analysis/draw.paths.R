@@ -20,7 +20,8 @@ readPointsCsv <- function(file="")
     basefnInput <- basename(file)
     if (grepl("^[.~]", basefnInput) | !grepl("[.]csv$", basefnInput))
     {
-        print("Wrong filename. Filename should end with '.srt' and not start with '.' or '~'.")
+        print("Wrong filename. Filename should end with '.csv' 
+               and not start with '.' or '~'.")
         return(NULL)
     }
 
@@ -50,7 +51,7 @@ readPointsCsv <- function(file="")
     return(df)
 }
 
-readPaths <- function(dir="")
+readPaths <- function(dir="", class="")
 {
     # initializing directory selection
     if (dir=="" | !file.exists(dir))
@@ -66,9 +67,17 @@ readPaths <- function(dir="")
     }
 
     flist <- list.files(path=dir, pattern="*.csv", full.names=TRUE)
+
+    if (class == "d" | class == "D" | class == "dorsal")
+    {
+        flist <- flist[grepl("d[.]swc", flist)]
+    } else if (class == "v" | class == "V" | class == "ventral") {
+        flist <- flist[grepl("v[.]swc", flist)]
+    }
+
     if ( identical(flist, character(0)) ) 
     {
-        print("No .srt file detected.")
+        print("No .csv file detected.")
         return(NULL)
     }
     nFile <- length(flist)
@@ -144,7 +153,7 @@ plotPaths2 <- function(dir="")
             labelP$bfn <- basename(flist[iFile])
             # print(labelP)
             p <- p + geom_path(data=points, aes(x, -y), 
-                               color='red', size=2, alpha=0.5) +
+                               color='red', size=2, alpha=0.5)
                  # geom_text(data=labelP, aes(x=x, y=-y, label=bfn))
 
         }
@@ -153,9 +162,211 @@ plotPaths2 <- function(dir="")
     return(p)
 }
 
+readPathsAsNormalizedDf <- function(dir="")
+{
+    # initializing directory selection
+    if (dir=="" | !file.exists(dir))
+    {
+        file <- choose.files(caption="Select Directory For Paths")
+        if ( is.na(file) )
+        {
+            print("Directory selection has been canceled.")
+            return(NULL)
+        }
+
+        dir <- dirname(file)
+    }
+
+    flist <- list.files(path=dir, pattern="*.csv", full.names=TRUE)
+    if ( identical(flist, character(0)) ) 
+    {
+        print("No .csv file detected.")
+        return(NULL)
+    }
+
+    nFile <- length(flist)
+    library(stringr)
+
+    df <- data.frame()
+    for ( iFile in 1:nFile )
+    {
+        fn <- flist[iFile]
+        # get info from file name
+        neuronId <- str_extract(fn, "[0-9][0-9][0-9]")
+        neuriteType <- str_extract(str_extract(fn, "[dv][.]swc"), "[dv]")
+        points <- readPointsCsv(fn)
+        if (!is.null(points))
+        {
+            points <- normalizePath(points)
+            n <- nrow(points)
+            row.names(points) <- c(1:n)
+            points$i <- c(1:n)
+            points$neuron <- neuronId
+            points$type <- neuriteType
+            df <- rbind(df, points)
+        }
+    }
+
+    return(df)
+}
+
+meanPathsFromAll <- function(allPaths)
+{
+    library(plyr)
+    meanp <- ddply(allPaths, c("i", "type"), summarise, 
+                   x = mean(x),
+                   y = mean(y) )
+    return(meanp)
+}
+
+plotPaths3 <- function(dir="")
+{
+    # initializing directory selection
+    if (dir=="" | !file.exists(dir))
+    {
+        file <- choose.files(caption="Select Directory For Paths")
+        if ( is.na(file) )
+        {
+            print("Directory selection has been canceled.")
+            return(NULL)
+        }
+
+        dir <- dirname(file)
+    }
+
+    dplist <- readPaths(dir=dir, class="d")
+    vplist <- readPaths(dir=dir, class="v")
+
+    meanDp <- calculateMeanPath(dplist)
+    meanVp <- calculateMeanPath(vplist)
+
+    meanDp <- normalizePath(meanDp)
+    meanVp <- normalizePath(meanVp)
+
+    allPaths <- readPathsAsNormalizedDf(dir)
+
+    meanPaths <- ddply(allPaths, c(""))
+    library(RColorBrewer)
+    getPal <- colorRampPalette(brewer.pal(12, "Set3"))
+
+    library(ggplot2)
+    p <- ggplot()
+
+    p <- p + geom_path(data=allPaths, aes(x, -y, group=type, color=neuron),
+                       size=2, alpha=0.2)
+    p <- p + geom_path(data=meanDp, aes(meanX, -meanY), color='red', size=3)
+
+    p <- p + geom_path(data=meanVp, aes(meanX, -meanY), color='green', size=3)
+
+    return(p)
+}
+
+calculateMeanPath <- function(paths)
+{
+    library(plyr)
+    nPonits <- min(unlist(lapply(paths, nrow)))
+    nPaths <- length(paths)
+    bindPaths <- data.frame()
+    for (i in 1:nPaths)
+    {
+        points <- paths[[i]][1:nPonits, ]
+        points$i <- c(1:nPonits)
+        row.names(points) <- c(1:nPonits)
+        bindPaths <- rbind(bindPaths, points)
+    }
+    
+    meanp <- ddply(bindPaths, c("i"), summarise, 
+                   meanX = mean(x),
+                   meanY = mean(y) )
+    meanp <- meanp[, names(meanp)!="i"]
+    return(meanp)
+}
+
+normalizePath <- function(points)
+{
+    points[, 1] <- points[, 1] - points[1, 1]
+    points[, 2] <- points[, 2] - points[1, 2]
+    return(points)
+}
+
+plotPathsDV <- function(dir="")
+{
+    # initializing directory selection
+    if (dir=="" | !file.exists(dir))
+    {
+        file <- choose.files(caption="Select Directory For Paths")
+        if ( is.na(file) )
+        {
+            print("Directory selection has been canceled.")
+            return(NULL)
+        }
+
+        dir <- dirname(file)
+    }
+
+    dplist <- readPaths(dir=dir, class="d")
+    vplist <- readPaths(dir=dir, class="v")
+    if (length(dplist) != length(vplist))
+    {
+        warning("D & P neurite numbers do not match!")
+    }
+
+    meanDp <- calculateMeanPath(dplist)
+    meanVp <- calculateMeanPath(vplist)
+
+    meanDp <- normalizePath(meanDp)
+    meanVp <- normalizePath(meanVp)
+
+    library(RColorBrewer)
+    getPal <- colorRampPalette(brewer.pal(12, "Set3"))
+    pal <- getPal(length(dplist))
+
+    library(ggplot2)
+    p <- ggplot()
+
+    nD <- length(dplist)
+    for (iPath in 1:nD)
+    {
+        points <- dplist[[iPath]]
+        points <- normalizePath(points)
+        p <- p + geom_path(data=points, aes(x, -y), color=pal[iPath], size=2, alpha=0.2)
+    }
+    # p <- p + geom_path(data=meanDp, aes(meanX, -meanY), color='red', size=3)
+
+    nV <- length(vplist)
+    for (iPath in 1:nV)
+    {
+        points <- vplist[[iPath]]
+        points[, 1] <- points[, 1] - points[1, 1]
+        points[, 2] <- points[, 2] - points[1, 2]
+        p <- p + geom_path(data=points, aes(x, -y), color=pal[iPath], size=2, alpha=0.2)
+    }
+    # p <- p + geom_path(data=meanVp, aes(meanX, -meanY), color='green', size=3)
+
+    return(p)
+}
+
+selectDir <- function()
+{
+        file <- choose.files(caption="Select Directory For Paths")
+        if ( is.na(file) )
+        {
+            print("Directory selection has been canceled.")
+            return(NULL)
+        }
+
+        dir <- dirname(file)
+        return(dir)
+}
+
+dir <- selectDir()
+outfn <- file.path(dir, "out.pdf")
 # p <- plotPaths(readPaths())
 # print(p)
 
-p <- plotPaths2()
+p <- plotPathsDV(dir=dir)
 print(p)
 
+pdf(outfn, width=10, height=10)
+print(p)
+dev.off()
