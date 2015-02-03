@@ -163,7 +163,12 @@ plotPaths2 <- function(dir="")
 }
 
 readPathsAsNormalizedDf <- function(dir="")
-{
+{   # This version reads all points into a big data frame, 
+    # with relavant information
+    # Output data frame is in the format of:
+    #   x       y           i             neuron      type
+    #  coordinates    index in paths    neuron id    d or v 
+
     # initializing directory selection
     if (dir=="" | !file.exists(dir))
     {
@@ -211,16 +216,22 @@ readPathsAsNormalizedDf <- function(dir="")
 }
 
 meanPathsFromAll <- function(allPaths)
-{
+{   # Calculate mean paths for each type (d or v) of paths,
+    # from a big data frame with all points
+
     library(plyr)
     meanp <- ddply(allPaths, c("i", "type"), summarise, 
                    x = mean(x),
-                   y = mean(y) )
-    return(meanp)
+                   y = mean(y),
+                   n = length(i) )
+
+    maxNPaths <- max(meanp$n)
+    return(meanp[meanp$n==maxNPaths, c('x', 'y', 'i', 'type')])
 }
 
-plotPaths3 <- function(dir="")
-{
+plotPathsAll <- function(dir="")
+{   # Plot paths using a big data frame with all points
+
     # initializing directory selection
     if (dir=="" | !file.exists(dir))
     {
@@ -234,29 +245,35 @@ plotPaths3 <- function(dir="")
         dir <- dirname(file)
     }
 
-    dplist <- readPaths(dir=dir, class="d")
-    vplist <- readPaths(dir=dir, class="v")
-
-    meanDp <- calculateMeanPath(dplist)
-    meanVp <- calculateMeanPath(vplist)
-
-    meanDp <- normalizePath(meanDp)
-    meanVp <- normalizePath(meanVp)
-
     allPaths <- readPathsAsNormalizedDf(dir)
+    neurons <- levels(as.factor(allPaths$neuron))
+    nNeuron <- length(neurons)
 
-    meanPaths <- ddply(allPaths, c(""))
     library(RColorBrewer)
     getPal <- colorRampPalette(brewer.pal(12, "Set3"))
+    colors <- getPal(nNeuron)
 
     library(ggplot2)
     p <- ggplot()
 
-    p <- p + geom_path(data=allPaths, aes(x, -y, group=type, color=neuron),
-                       size=2, alpha=0.2)
-    p <- p + geom_path(data=meanDp, aes(meanX, -meanY), color='red', size=3)
+    for (iNeuron in 1:nNeuron)
+    {
+        points <- allPaths[allPaths$neuron==neurons[iNeuron], ]
+        dpoints <- points[points$type=='d', ]
+        p <- p + geom_path(data=dpoints, aes(x, -y), 
+                           color=colors[iNeuron], size=2, alpha=0.5)
 
-    p <- p + geom_path(data=meanVp, aes(meanX, -meanY), color='green', size=3)
+        vpoints <- points[points$type=='v', ]
+        p <- p + geom_path(data=vpoints, aes(x, -y), 
+                           color=colors[iNeuron], size=2, alpha=0.5)
+
+    }
+
+    meanPaths <- meanPathsFromAll(allPaths)
+    meanDp <- meanPaths[meanPaths$type=='d', ]
+    meanVp <- meanPaths[meanPaths$type=='v', ]
+    p <- p + geom_path(data=meanDp, aes(x, -y), color='red', size=3)
+    p <- p + geom_path(data=meanVp, aes(x, -y), color='green', size=3)
 
     return(p)
 }
@@ -290,7 +307,8 @@ normalizePath <- function(points)
 }
 
 plotPathsDV <- function(dir="")
-{
+{   # Plot all paths using lists of paths
+
     # initializing directory selection
     if (dir=="" | !file.exists(dir))
     {
@@ -364,7 +382,8 @@ outfn <- file.path(dir, "out.pdf")
 # p <- plotPaths(readPaths())
 # print(p)
 
-p <- plotPathsDV(dir=dir)
+# p <- plotPathsDV(dir=dir)
+p <- plotPathsAll(dir=dir)
 print(p)
 
 pdf(outfn, width=10, height=10)
