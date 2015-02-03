@@ -4,7 +4,8 @@
 library(ggplot2)
 
 readPointsCsv <- function(file="")
-{
+{   # Read a single csv file that contains points of a path
+
     # initializing input file selection
     if (file=="")
     {
@@ -32,7 +33,6 @@ readPointsCsv <- function(file="")
         # dorsal dendrites, Y direction: large -> small
         # invert path if Y coords is small -> large
         df <- df[nrow(df):1, ]
-        # print("Dorsal")
     }
 
     if (grepl("v[.]swc", basefnInput) & (df[1, 1] > df[nrow(df), 1]))
@@ -40,7 +40,6 @@ readPointsCsv <- function(file="")
         # dorsal dendrites, X direction: small -> large
         # invert path if X coords is large -> small
         df <- df[nrow(df):1, ]
-        # print("Ventral")
     }
 
     if (ncol(df) != 2)
@@ -52,7 +51,8 @@ readPointsCsv <- function(file="")
 }
 
 readPaths <- function(dir="", class="")
-{
+{   # Read paths in a directory into a list, class specifies neurite type
+
     # initializing directory selection
     if (dir=="" | !file.exists(dir))
     {
@@ -68,6 +68,7 @@ readPaths <- function(dir="", class="")
 
     flist <- list.files(path=dir, pattern="*.csv", full.names=TRUE)
 
+    # prune the file list according to neurite types
     if (class == "d" | class == "D" | class == "dorsal")
     {
         flist <- flist[grepl("d[.]swc", flist)]
@@ -97,25 +98,39 @@ readPaths <- function(dir="", class="")
     return(plist)
 }
 
-plotPaths <- function(paths)
-{
-    library(ggplot2)
-    p <- ggplot()
+calculateMeanPath <- function(paths)
+{   # Calculate an average path from a list of paths, 
+    # the length of the mean path is the same with the shortest path
 
+    library(plyr)
+    nPonits <- min(unlist(lapply(paths, nrow)))
     nPaths <- length(paths)
-    for (iPath in 1:nPaths)
+    bindPaths <- data.frame()
+    for (i in 1:nPaths)
     {
-        points <- paths[[iPath]]
-        points[, 1] <- points[, 1] - points[1, 1]
-        points[, 2] <- points[, 2] - points[1, 2]
-        p <- p + geom_path(data=points, aes(x, -y), color='red', size=2, alpha=0.5)
+        points <- paths[[i]][1:nPonits, ]
+        points$i <- c(1:nPonits)
+        row.names(points) <- c(1:nPonits)
+        bindPaths <- rbind(bindPaths, points)
     }
-
-    return(p)
+    
+    meanp <- ddply(bindPaths, c("i"), summarise, 
+                   meanX = mean(x),
+                   meanY = mean(y) )
+    meanp <- meanp[, names(meanp)!="i"]
+    return(meanp)
 }
 
-plotPaths2 <- function(dir="")
-{
+normalizePath <- function(points)
+{   # Shift the path starting point to (0, 0)
+    points[, 1] <- points[, 1] - points[1, 1]
+    points[, 2] <- points[, 2] - points[1, 2]
+    return(points)
+}
+
+plotPathsDV <- function(dir="")
+{   # Plot all paths using lists of paths
+
     # initializing directory selection
     if (dir=="" | !file.exists(dir))
     {
@@ -129,42 +144,51 @@ plotPaths2 <- function(dir="")
         dir <- dirname(file)
     }
 
-    flist <- list.files(path=dir, pattern="*.csv", full.names=TRUE)
-    if ( identical(flist, character(0)) ) 
+    dplist <- readPaths(dir=dir, class="d")
+    vplist <- readPaths(dir=dir, class="v")
+    if (length(dplist) != length(vplist))
     {
-        print("No .csv file detected.")
-        return(NULL)
+        warning("D & P neurite numbers do not match!")
     }
-    nFile <- length(flist)
+
+    meanDp <- calculateMeanPath(dplist)
+    meanVp <- calculateMeanPath(vplist)
+
+    meanDp <- normalizePath(meanDp)
+    meanVp <- normalizePath(meanVp)
+
+    library(RColorBrewer)
+    getPal <- colorRampPalette(brewer.pal(12, "Set3"))
+    pal <- getPal(length(dplist))
 
     library(ggplot2)
     p <- ggplot()
 
-    for ( iFile in 1:nFile )
+    nD <- length(dplist)
+    for (iPath in 1:nD)
     {
-        bfn <- basename(flist[iFile])
-        # print(grep("^(.*?)[.]", basename(fn), value=T))
-        points <- readPointsCsv(flist[iFile])
-        if (!is.null(points))
-        {
-            points[, 1] <- points[, 1] - points[1, 1]
-            points[, 2] <- points[, 2] - points[1, 2]
-            labelP <- points[nrow(points)%/%2, ]
-            labelP$bfn <- basename(flist[iFile])
-            # print(labelP)
-            p <- p + geom_path(data=points, aes(x, -y), 
-                               color='red', size=2, alpha=0.5)
-                 # geom_text(data=labelP, aes(x=x, y=-y, label=bfn))
-
-        }
+        points <- dplist[[iPath]]
+        points <- normalizePath(points)
+        p <- p + geom_path(data=points, aes(x, -y), color=pal[iPath], size=2, alpha=0.2)
     }
+    # p <- p + geom_path(data=meanDp, aes(meanX, -meanY), color='red', size=3)
+
+    nV <- length(vplist)
+    for (iPath in 1:nV)
+    {
+        points <- vplist[[iPath]]
+        points[, 1] <- points[, 1] - points[1, 1]
+        points[, 2] <- points[, 2] - points[1, 2]
+        p <- p + geom_path(data=points, aes(x, -y), color=pal[iPath], size=2, alpha=0.2)
+    }
+    # p <- p + geom_path(data=meanVp, aes(meanX, -meanY), color='green', size=3)
 
     return(p)
 }
 
 readPathsAsNormalizedDf <- function(dir="")
-{   # This version reads all points into a big data frame, 
-    # with relavant information
+{   # This version reads all points into a big data frame 
+    #   with relavant information.
     # Output data frame is in the format of:
     #   x       y           i             neuron      type
     #  coordinates    index in paths    neuron id    d or v 
@@ -261,105 +285,19 @@ plotPathsAll <- function(dir="")
         points <- allPaths[allPaths$neuron==neurons[iNeuron], ]
         dpoints <- points[points$type=='d', ]
         p <- p + geom_path(data=dpoints, aes(x, -y), 
-                           color=colors[iNeuron], size=2, alpha=0.5)
+                           color=colors[iNeuron], size=2, alpha=0.8)
 
         vpoints <- points[points$type=='v', ]
         p <- p + geom_path(data=vpoints, aes(x, -y), 
-                           color=colors[iNeuron], size=2, alpha=0.5)
+                           color=colors[iNeuron], size=2, alpha=0.8)
 
     }
 
-    meanPaths <- meanPathsFromAll(allPaths)
-    meanDp <- meanPaths[meanPaths$type=='d', ]
-    meanVp <- meanPaths[meanPaths$type=='v', ]
-    p <- p + geom_path(data=meanDp, aes(x, -y), color='red', size=3)
-    p <- p + geom_path(data=meanVp, aes(x, -y), color='green', size=3)
-
-    return(p)
-}
-
-calculateMeanPath <- function(paths)
-{
-    library(plyr)
-    nPonits <- min(unlist(lapply(paths, nrow)))
-    nPaths <- length(paths)
-    bindPaths <- data.frame()
-    for (i in 1:nPaths)
-    {
-        points <- paths[[i]][1:nPonits, ]
-        points$i <- c(1:nPonits)
-        row.names(points) <- c(1:nPonits)
-        bindPaths <- rbind(bindPaths, points)
-    }
-    
-    meanp <- ddply(bindPaths, c("i"), summarise, 
-                   meanX = mean(x),
-                   meanY = mean(y) )
-    meanp <- meanp[, names(meanp)!="i"]
-    return(meanp)
-}
-
-normalizePath <- function(points)
-{
-    points[, 1] <- points[, 1] - points[1, 1]
-    points[, 2] <- points[, 2] - points[1, 2]
-    return(points)
-}
-
-plotPathsDV <- function(dir="")
-{   # Plot all paths using lists of paths
-
-    # initializing directory selection
-    if (dir=="" | !file.exists(dir))
-    {
-        file <- choose.files(caption="Select Directory For Paths")
-        if ( is.na(file) )
-        {
-            print("Directory selection has been canceled.")
-            return(NULL)
-        }
-
-        dir <- dirname(file)
-    }
-
-    dplist <- readPaths(dir=dir, class="d")
-    vplist <- readPaths(dir=dir, class="v")
-    if (length(dplist) != length(vplist))
-    {
-        warning("D & P neurite numbers do not match!")
-    }
-
-    meanDp <- calculateMeanPath(dplist)
-    meanVp <- calculateMeanPath(vplist)
-
-    meanDp <- normalizePath(meanDp)
-    meanVp <- normalizePath(meanVp)
-
-    library(RColorBrewer)
-    getPal <- colorRampPalette(brewer.pal(12, "Set3"))
-    pal <- getPal(length(dplist))
-
-    library(ggplot2)
-    p <- ggplot()
-
-    nD <- length(dplist)
-    for (iPath in 1:nD)
-    {
-        points <- dplist[[iPath]]
-        points <- normalizePath(points)
-        p <- p + geom_path(data=points, aes(x, -y), color=pal[iPath], size=2, alpha=0.2)
-    }
-    # p <- p + geom_path(data=meanDp, aes(meanX, -meanY), color='red', size=3)
-
-    nV <- length(vplist)
-    for (iPath in 1:nV)
-    {
-        points <- vplist[[iPath]]
-        points[, 1] <- points[, 1] - points[1, 1]
-        points[, 2] <- points[, 2] - points[1, 2]
-        p <- p + geom_path(data=points, aes(x, -y), color=pal[iPath], size=2, alpha=0.2)
-    }
-    # p <- p + geom_path(data=meanVp, aes(meanX, -meanY), color='green', size=3)
+    # meanPaths <- meanPathsFromAll(allPaths)
+    # meanDp <- meanPaths[meanPaths$type=='d', ]
+    # meanVp <- meanPaths[meanPaths$type=='v', ]
+    # p <- p + geom_path(data=meanDp, aes(x, -y), color='red', size=3)
+    # p <- p + geom_path(data=meanVp, aes(x, -y), color='green', size=3)
 
     return(p)
 }
