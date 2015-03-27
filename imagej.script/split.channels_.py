@@ -1,5 +1,6 @@
 from ij import IJ, ImagePlus, ImageStack
 from ij.plugin import ChannelSplitter
+from ij.io import DirectoryChooser
 import os
 
 srcDir = DirectoryChooser("Batch Splitter: Chose Source Dir").getDirectory()

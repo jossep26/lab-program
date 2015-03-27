@@ -1,11 +1,12 @@
 from ij import IJ, ImagePlus, ImageStack
 from ij.process import ImageProcessor
 from ij.process import FloatProcessor  
-from ij.io import OpenDialog
 from ij.gui import GenericDialog
 from ij.plugin import ChannelSplitter
 from ij.gui import ImageWindow
+from ij.io import OpenDialog
 from ij.io import FileSaver
+from ij.io import DirectoryChooser
 import os
 
 from loci.plugins import BF
