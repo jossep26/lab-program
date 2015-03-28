@@ -1,5 +1,6 @@
-from ini.trakem2.display import AreaList, Display, AreaTree, Connector, Display3D
+from ini.trakem2.display import AreaList, Display, AreaTree, Connector, Display3D, Treeline
 from ini.trakem2.tree import ProjectThing
+from ini.trakem2 import Project
 import re
 
 ## tools
