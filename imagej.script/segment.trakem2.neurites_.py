@@ -1,3 +1,4 @@
+from ini.trakem2 import Project
 from ini.trakem2.display import Tag
 from java.awt.event import KeyEvent
 from ini.trakem2.display import AreaList, Display, AreaTree, Connector, Node, Treeline
