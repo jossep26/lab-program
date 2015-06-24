@@ -1,3 +1,6 @@
+## Make sure to backup the TrakEM2 project files! ##
+## Make sure to backup this file before you modify it. ##
+
 from ini.trakem2 import Project
 import csv
 
