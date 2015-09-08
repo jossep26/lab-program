@@ -1,6 +1,10 @@
 ### Preparations ###
 # install.packages('ggplot2', repos='http://mirror.bjtu.edu.cn/cran/')
 ######
+### Notes before use ###
+# original file name should in 'd-xxxxx.swc' format, where 'd' indicate type,
+# 'xxxxx' indicate neuron id.
+######
 library(ggplot2)
 
 readPointsCsv <- function(file="")
@@ -189,6 +193,7 @@ plotPathsDV <- function(dir="")
 readPathsAsNormalizedDf <- function(dir="")
 {   # This version reads all points into a big data frame 
     #   with relavant information.
+    # The neu
     # Output data frame is in the format of:
     #   x       y           i             neuron      type
     #  coordinates    index in paths    neuron id    d or v 
@@ -220,9 +225,13 @@ readPathsAsNormalizedDf <- function(dir="")
     for ( iFile in 1:nFile )
     {
         fn <- flist[iFile]
-        # get info from file name
-        neuronId <- str_extract(basename(fn), "[0-9][0-9][0-9]")
-        neuriteType <- str_extract(str_extract(basename(fn), "[dv][.]swc"), "[dv]")
+        ## get info from file name
+        # neuronId <- str_extract(basename(fn), "[0-9][0-9][0-9]")
+        # neuriteType <- str_extract(str_extract(basename(fn), "[dv][.]swc"), "[dv]")
+        ## updated version of file names
+        neuronId <-  gsub('[dv]-(.*)[.]swc.*', "\\1", basename(fn))
+        neuriteType <- str_extract(str_extract(basename(fn), "^[dv]"), "[dv]")
+
         points <- readPointsCsv(fn)
         if (!is.null(points))
         {
